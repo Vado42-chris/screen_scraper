@@ -1,0 +1,78 @@
+engine: egress
+version: 1
+status: screen_scraper_initial
+purpose: route approved outputs and staged actions to UI, documents, vault, exports, metadata, snapshots, and future repo/provider actions
+
+outputs:
+  ui_updates:
+    enabled: true
+  document_generation:
+    enabled: true
+  document_patch_application:
+    enabled: true
+    requires_user_approval: true
+  source_library_updates:
+    enabled: true
+  metadata_updates:
+    enabled: true
+    requires_user_approval: true
+  media_asset_updates:
+    enabled: true
+  snapshot_creation:
+    enabled: true
+  export_generation:
+    enabled: true
+  repo_commit_push:
+    enabled: false
+    notes: future xi-io.net management-plane integration
+  notifications:
+    enabled: false
+  external_tool_calls:
+    enabled: false
+    requires_bridge: true
+
+modes:
+  novice:
+    default: true
+    require_preview_for_ai_edits: true
+    require_preview_for_metadata: true
+    require_preview_for_rights_changes: true
+    hide_raw_event_payloads: true
+  guided:
+    require_diff_preview: true
+    require_user_confirm: true
+    show_explanations: true
+  expert:
+    allow_raw_metadata_visibility: true
+    allow_branch_choice: true
+    allow_file_selection: true
+    allow_advanced_provider_controls: true
+
+approval_gates:
+  ai_document_change: required
+  metadata_generated: required
+  rights_license_change: required
+  rollback_restore: required
+  cloud_provider_use: required
+  export_with_unresolved_items: warning
+
+safety:
+  never_commit:
+    - vault/**
+    - runtime/**
+    - .env
+    - .env.*
+    - "**/*secret*"
+    - "**/*token*"
+    - "**/*key*"
+  redact_before_output: true
+  require_safe_path_allowlist: true
+  do_not_silently_overwrite_user_text: true
+  do_not_silently_change_license_metadata: true
+  do_not_send_private_content_to_cloud_without_policy: true
+
+freshness:
+  update_after_successful_output: true
+  write_event_record: true
+  write_decision_link: true
+  mark_related_snapshots: true
