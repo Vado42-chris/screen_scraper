@@ -30,7 +30,7 @@ The user sees a simple writing interface.
 
 The backend remains service-oriented, event-bound, and xi-io compliant.
 
-This matches the source vision: users should feel like they are writing with assistance, while the deeper source, tag, bin, block, and analysis systems operate quietly underneath. fileciteturn107file0
+This matches the uploaded source vision: users should feel like they are writing with assistance, while the deeper source, tag, bin, block, and analysis systems operate quietly underneath.
 
 ---
 
@@ -39,25 +39,25 @@ This matches the source vision: users should feel like they are writing with ass
 ## Tier 0 Local Evidence
 
 - local files:
-  - /mnt/data/scripts_plan.md
+  - `/mnt/data/scripts_plan.md`
 - notes:
   - Uploaded source material emphasizes chat-first writing, live document panel, minimal artifact library, export gate, hidden backend structure, optional tags/references/blocks.
 
 ## Tier 1 Repo Evidence
 
 - repo files:
-  - docs/backend-engine-alignment-v1.md
-  - docs/events/event-model.yaml
-  - docs/data/document-data-model.yaml
-  - docs/providers/ollama-provider-spec.md
-  - docs/command-and-action-registry-v1.md
-  - docs/development-readiness-gate-v1.md
-  - engines/ingress/ingress-config.yaml
-  - engines/binning/bin-map-42.yaml
-  - engines/analysis/analysis-rules.yaml
-  - engines/lexicon/lexicon.yaml
-  - engines/egress/egress-config.yaml
-  - engines/observer/observer-rules.yaml
+  - `docs/backend-engine-alignment-v1.md`
+  - `docs/events/event-model.yaml`
+  - `docs/data/document-data-model.yaml`
+  - `docs/providers/ollama-provider-spec.md`
+  - `docs/command-and-action-registry-v1.md`
+  - `docs/development-readiness-gate-v1.md`
+  - `engines/ingress/ingress-config.yaml`
+  - `engines/binning/bin-map-42.yaml`
+  - `engines/analysis/analysis-rules.yaml`
+  - `engines/lexicon/lexicon.yaml`
+  - `engines/egress/egress-config.yaml`
+  - `engines/observer/observer-rules.yaml`
 
 ## Tier 2 Management Evidence
 
@@ -70,10 +70,9 @@ This matches the source vision: users should feel like they are writing with ass
 
 ## Missing Evidence
 
-- actual backend implementation
 - final persistence library
 - migration system
-- final editor engine
+- final editor engine implementation
 
 ---
 
@@ -104,6 +103,44 @@ bypass event ledger for meaningful state changes
 ---
 
 # 5. Service Map
+
+## HealthService
+
+Purpose:
+
+```text
+report local backend runtime health
+provide first smoke-test endpoint
+```
+
+Owns:
+
+```text
+runtime health response only
+```
+
+Consumes:
+
+```text
+app startup
+smoke checks
+frontend status requests
+```
+
+Emits:
+
+```text
+app.started
+```
+
+Safety:
+
+```text
+No private payloads.
+No secrets.
+```
+
+---
 
 ## DocumentService
 
@@ -145,17 +182,6 @@ document.version_saved
 heading.created
 source_reference.inserted
 suggestion.accepted
-```
-
-Xi-io engine touchpoints:
-
-```text
-Ingress captures document/editor events.
-Binning classifies document events.
-Analysis can evaluate document structure/readiness.
-Lexicon normalizes inline tags/refs/blocks.
-Egress applies approved patches and exports.
-Observer flags stale prompts, unresolved comments, export blockers.
 ```
 
 Safety:
@@ -205,17 +231,6 @@ source_reference.inserted
 source.metadata_updated
 ```
 
-Xi-io engine touchpoints:
-
-```text
-Ingress captures imports.
-Binning classifies source type and domain.
-Analysis summarizes/relevance-scores/source-health checks.
-Lexicon maps aliases/entities/tags.
-Egress exposes source matches and references.
-Observer flags missing provenance or unknown rights.
-```
-
 Safety:
 
 ```text
@@ -256,14 +271,6 @@ Emits:
 retrieval.performed
 retrieval.failed
 analysis.completed, when coupled with analysis
-```
-
-Xi-io engine touchpoints:
-
-```text
-Analysis evaluates source relevance.
-Lexicon normalizes query terms and aliases.
-Observer flags stale indexes or missing source refs.
 ```
 
 Safety:
@@ -316,15 +323,6 @@ suggestion.created
 provider.context_too_large
 ```
 
-Xi-io engine touchpoints:
-
-```text
-Ingress captures AI request.
-Analysis can evaluate output confidence/relevance.
-Egress routes suggestion patches to review surfaces.
-Observer flags provider unavailable/context too large/cloud permission required.
-```
-
 Safety:
 
 ```text
@@ -367,15 +365,6 @@ ollama.health_checked
 ollama.models_listed
 provider.unavailable
 provider.model_missing
-```
-
-Xi-io engine touchpoints:
-
-```text
-Ingress captures provider health events.
-Binning classifies AI gateway/runtime health.
-Observer flags provider failures.
-Egress updates status UI.
 ```
 
 Safety:
@@ -422,14 +411,6 @@ plan.node_created
 plan.card_updated
 ```
 
-Xi-io engine touchpoints:
-
-```text
-Analysis detects prompt staleness and continuity gaps.
-Lexicon maps user block/tag/reference language.
-Observer flags stale/missing prompts and open questions.
-```
-
 Safety:
 
 ```text
@@ -472,15 +453,6 @@ image.moved
 image.resized
 image.wrapped
 metadata.generated
-```
-
-Xi-io engine touchpoints:
-
-```text
-Ingress captures media import/generation.
-Analysis proposes metadata/alt/caption and layout warnings.
-Egress inserts placement into document.
-Observer flags missing alt text or unknown rights.
 ```
 
 Safety:
@@ -532,15 +504,6 @@ metadata.marked_stale
 metadata.regenerated
 ```
 
-Xi-io engine touchpoints:
-
-```text
-Analysis proposes metadata/confidence.
-Lexicon normalizes tags/entities/terms.
-Egress writes approved metadata.
-Observer flags unapproved/stale/missing metadata.
-```
-
 Safety:
 
 ```text
@@ -588,14 +551,6 @@ rights.migration_previewed
 rights.migration_applied
 ```
 
-Xi-io engine touchpoints:
-
-```text
-Analysis detects unknown/mixed/conflicting rights.
-Observer flags unknown rights/export blockers.
-Egress applies user-approved rights changes.
-```
-
 Safety:
 
 ```text
@@ -634,14 +589,6 @@ Emits:
 ```text
 ledger.entry_created
 audit.entry_created
-```
-
-Xi-io engine touchpoints:
-
-```text
-Ingress event stream feeds ledger.
-Observer consumes ledger for drift/freshness/history warnings.
-Egress uses ledger for export/history reports.
 ```
 
 Safety:
@@ -685,14 +632,6 @@ rollback.previewed
 rollback.completed
 ```
 
-Xi-io engine touchpoints:
-
-```text
-Egress creates/restores approved snapshots.
-Observer recommends snapshots before risky actions.
-Ledger records snapshot/rollback history.
-```
-
 Safety:
 
 ```text
@@ -732,15 +671,6 @@ Emits:
 export.readiness_checked
 export.generated
 export.blocked
-```
-
-Xi-io engine touchpoints:
-
-```text
-Analysis checks export readiness.
-Observer flags blockers.
-Egress writes approved export artifact.
-Ledger records export.
 ```
 
 Safety:
@@ -789,12 +719,6 @@ observer.snapshot_recommended
 observer.export_blocker_created
 ```
 
-Xi-io engine touchpoints:
-
-```text
-Observer is the 43/Ibal layer.
-```
-
 Safety:
 
 ```text
@@ -805,17 +729,11 @@ Warns and recommends, does not silently rewrite/approve/restore/change rights.
 
 # 6. Cross-Service Rules
 
-## Event-first behavior
-
 Meaningful state changes emit events.
 
 UI-only state changes may remain frontend-only but still use action IDs.
 
-## Approval gates
-
 Services must respect command/action approval gates.
-
-## Private payload handling
 
 Large/private payloads use:
 
@@ -825,10 +743,6 @@ vault_artifact_id
 safe summary
 hash
 ```
-
-not raw repo-safe logs.
-
-## Error handling
 
 Services return recoverable, plain-language errors with suggested actions.
 
@@ -921,7 +835,6 @@ First scaffold slice can begin without service ownership ambiguity.
 # 11. Open Gaps
 
 ```text
-actual FastAPI package structure
 SQLite schema/migrations
 SourceArtifact full data model
 ExportJob data model
