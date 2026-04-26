@@ -1,0 +1,441 @@
+template_id: event-model-template
+template_version: 1.0.0
+template_status: screen_scraper_initial
+artifact_type: event_model
+required_for: event_bound_xi_io_compliant_writing_product
+
+artifact_metadata:
+  artifact_id: screen-scraper-event-model-v1
+  tenant_id: local_default
+  project_id: screen_scraper
+  parent_id: null
+  event_model_name: screen_scraper_event_model
+  product_area: backend_engines
+  owner: Chris Hallberg
+  author_actor: ChatGPT
+  reviewer: Chris Hallberg
+  created_at: 2026-04-26
+  updated_at: 2026-04-26
+  freshness_state: fresh
+  validation_state: not_checked
+  visibility: public
+  repo_sync_state: synced
+
+purpose: >
+  Define the first screen_scraper event taxonomy for a local-first, source-aware,
+  AI-assisted cooperative word processor that conforms to the xi-io engine model.
+
+source_evidence:
+  tier_0_local:
+    local_files:
+      - /media/chrishallberg/Storage 22/999_Work/003_Projects/014_scripts
+      - /media/chrishallberg/Storage 11/01_Work/14_scripts
+    old_version_lineage: []
+    screenshots_or_exports: []
+    notes:
+      - scripts_plan.md source conversation uploaded to project
+  tier_1_repo:
+    repo_files:
+      - README.md
+      - docs/event-ledger-and-snapshots-v1.md
+      - docs/backend-engine-alignment-v1.md
+      - docs/word-processor-requirements-v1.md
+      - docs/backend-research-integration-v1.md
+      - engines/ingress/ingress-config.yaml
+      - engines/binning/bin-map-42.yaml
+      - engines/analysis/analysis-rules.yaml
+      - engines/lexicon/lexicon.yaml
+      - engines/egress/egress-config.yaml
+      - engines/observer/observer-rules.yaml
+    source_events: []
+    schemas:
+      - engines/ingress/ingress-schema.json
+      - engines/binning/binning-schema.json
+      - engines/analysis/analysis-schema.json
+      - engines/lexicon/lexicon-schema.json
+      - engines/egress/egress-schema.json
+      - engines/observer/ibal-context-schema.json
+  tier_2_management:
+    workbench_docs:
+      - xi-io.net docs/backend-engine-architecture-v1.md
+      - xi-io.net docs/templates/universal/event-model-template.yaml
+    decisions:
+      - build screen_scraper locally now while remaining xi-io compliant
+    wireframes: []
+  missing_evidence:
+    - final editor engine selection
+    - concrete backend implementation
+    - concrete frontend implementation
+
+event_taxonomy:
+  - event_type: app.started
+    description: Local application runtime started.
+    source: runtime
+    trigger: backend startup
+    actor_types: [system]
+    object_refs: [system]
+    payload_fields:
+      - name: environment
+        type: string
+        required: true
+        sensitivity: low
+        validation: development|test|live
+    default_status: info
+    severity_scale: low
+    visibility_default: project
+    bins: [34]
+    tags: [runtime]
+    references: []
+    allowed_interactions: [system_note]
+    thread_allowed: false
+    decision_candidate: false
+    ledger_entry_type: runtime
+    audit_required: false
+    calendar_projection: true
+
+  - event_type: vault.selected
+    description: User selected or changed the local vault path.
+    source: settings
+    trigger: vault picker save
+    actor_types: [user]
+    object_refs: [project, system]
+    payload_fields:
+      - name: vault_path_ref
+        type: string
+        required: true
+        sensitivity: medium
+        validation: path stored locally, do not expose in public docs
+    default_status: info
+    severity_scale: medium
+    visibility_default: local_only
+    bins: [35, 32]
+    tags: [vault, privacy]
+    references: []
+    allowed_interactions: [comment, system_note]
+    thread_allowed: true
+    decision_candidate: true
+    ledger_entry_type: config
+    audit_required: true
+    calendar_projection: true
+
+  - event_type: source.imported
+    description: Source file, paste, or future URL captured into the local source library.
+    source: ingress
+    trigger: source import completion
+    actor_types: [user, system]
+    object_refs: [source, project]
+    payload_fields:
+      - name: source_id
+        type: string
+        required: true
+        sensitivity: low
+        validation: uuid or stable id
+      - name: source_type
+        type: string
+        required: true
+        sensitivity: low
+        validation: local_file|large_paste|markdown|transcript|url_later
+      - name: vault_artifact_id
+        type: string
+        required: true
+        sensitivity: medium
+        validation: vault reference only
+    default_status: info
+    severity_scale: low|medium
+    visibility_default: project
+    bins: [9, 10]
+    tags: [source, ingress]
+    references: []
+    allowed_interactions: [comment, annotation, agent_note]
+    thread_allowed: true
+    decision_candidate: false
+    ledger_entry_type: source
+    audit_required: true
+    calendar_projection: true
+
+  - event_type: document.saved
+    description: User document was saved or autosave checkpoint was promoted.
+    source: document_editor
+    trigger: save action
+    actor_types: [user, system]
+    object_refs: [document]
+    payload_fields:
+      - name: document_id
+        type: string
+        required: true
+        sensitivity: low
+        validation: uuid
+      - name: version_id
+        type: string
+        required: false
+        sensitivity: low
+        validation: uuid
+    default_status: info
+    severity_scale: low
+    visibility_default: project
+    bins: [1, 2, 27]
+    tags: [document, save]
+    references: []
+    allowed_interactions: [comment, system_note]
+    thread_allowed: true
+    decision_candidate: false
+    ledger_entry_type: document
+    audit_required: false
+    calendar_projection: true
+
+  - event_type: ai.requested
+    description: AI action requested through chat, menu, button, selection action, or command.
+    source: ai_gateway
+    trigger: registered action call
+    actor_types: [user, system]
+    object_refs: [document, source, provider]
+    payload_fields:
+      - name: action_id
+        type: string
+        required: true
+        sensitivity: low
+        validation: registered action id
+      - name: provider_id
+        type: string
+        required: false
+        sensitivity: low
+        validation: configured provider id
+      - name: context_policy
+        type: string
+        required: true
+        sensitivity: medium
+        validation: local_only|local_first|ask_before_cloud|cloud_assisted
+    default_status: info
+    severity_scale: medium
+    visibility_default: project
+    bins: [23, 26, 32]
+    tags: [ai, context]
+    references: []
+    allowed_interactions: [comment, agent_note, system_note]
+    thread_allowed: true
+    decision_candidate: false
+    ledger_entry_type: ai
+    audit_required: true
+    calendar_projection: true
+
+  - event_type: metadata.generated
+    description: Metadata proposal generated for an inserted/imported/generated item.
+    source: analysis
+    trigger: metadata analyzer result
+    actor_types: [system, ai]
+    object_refs: [metadata, media_asset, source, document]
+    payload_fields:
+      - name: item_id
+        type: string
+        required: true
+        sensitivity: low
+        validation: stable item id
+      - name: item_type
+        type: string
+        required: true
+        sensitivity: low
+        validation: image|source_reference|block|prompt|table|figure|term|export
+      - name: review_status
+        type: string
+        required: true
+        sensitivity: low
+        validation: proposed|approved|edited|rejected|stale|needs_review
+    default_status: needs_review
+    severity_scale: low|medium
+    visibility_default: project
+    bins: [16]
+    tags: [metadata, review]
+    references: []
+    allowed_interactions: [comment, annotation, decision_note]
+    thread_allowed: true
+    decision_candidate: true
+    ledger_entry_type: metadata
+    audit_required: true
+    calendar_projection: true
+
+  - event_type: snapshot.created
+    description: Restorable project/document/source/index snapshot was created.
+    source: snapshot_service
+    trigger: manual action or major milestone
+    actor_types: [user, system]
+    object_refs: [snapshot, project, document]
+    payload_fields:
+      - name: snapshot_id
+        type: string
+        required: true
+        sensitivity: low
+        validation: uuid
+      - name: snapshot_type
+        type: string
+        required: true
+        sensitivity: low
+        validation: project|document|source_library|analysis_index|lexicon|export|workspace
+    default_status: info
+    severity_scale: medium
+    visibility_default: project
+    bins: [28, 27]
+    tags: [snapshot, rollback]
+    references: []
+    allowed_interactions: [comment, decision_note]
+    thread_allowed: true
+    decision_candidate: true
+    ledger_entry_type: snapshot
+    audit_required: true
+    calendar_projection: true
+
+interaction_rules:
+  no_free_floating_comments: true
+  allowed_interaction_types:
+    - comment
+    - annotation
+    - reaction
+    - agent_note
+    - system_note
+    - decision_note
+  thread_rules:
+    max_default_nesting: 2
+    resolution_states:
+      - open
+      - needs_review
+      - resolved
+      - archived
+
+ledger_calendar:
+  ledger_entries_required:
+    - source.imported
+    - document.saved
+    - ai.requested
+    - metadata.generated
+    - snapshot.created
+  calendar_views:
+    - year
+    - month
+    - week
+    - day
+    - timeline
+  searchable_fields:
+    - event_type
+    - project_id
+    - actor_type
+    - target_type
+    - target_id
+    - bin
+    - tag
+    - severity
+  filterable_fields:
+    - project
+    - bin
+    - tag
+    - reference
+    - status
+    - severity
+    - event_type
+
+qual_quant_requirements:
+  qualitative_event_fields:
+    - summary
+    - rationale
+    - user_note
+    - observer_message
+  quantitative_event_fields:
+    - confidence
+    - severity
+    - stability
+    - word_count
+    - source_match_score
+  derived_ai_labels:
+    - label: metadata suggestion
+      source: metadata analyzer
+      confidence_required: true
+      user_correction_path: metadata review panel
+      marked_as_derived_not_truth: true
+    - label: bin assignment
+      source: binning engine
+      confidence_required: true
+      user_correction_path: advanced bin editor
+      marked_as_derived_not_truth: true
+
+safety_privacy_rbac:
+  sensitive_event_types:
+    - vault.selected
+    - ai.requested
+    - source.imported
+  redaction_rules:
+    - never store API keys in events
+    - store private source text in vault only
+    - store private document text in vault/database only
+    - use payload_ref for large or private payloads
+  permission_required_events:
+    - rollback.completed
+    - rights.migration_applied
+    - cloud_provider.requested
+  audit_required_events:
+    - vault.selected
+    - source.imported
+    - ai.requested
+    - metadata.generated
+    - rights.item_license_updated
+    - snapshot.created
+    - rollback.completed
+  local_only_events:
+    - vault.selected
+    - provider.secret_saved
+  vault_only_events:
+    - source.raw_text_stored
+    - document.private_snapshot_created
+
+analysis_automation_hooks:
+  lessons_created_from_events:
+    - user accepts AI suggestions repeatedly
+    - user rejects metadata suggestions repeatedly
+    - section prompt becomes stale after draft change
+  automation_candidates:
+    - suggest section prompt
+    - suggest metadata
+    - suggest source support
+    - suggest export readiness fixes
+  suggest_only_events:
+    - rights metadata suggestion
+    - cloud provider routing
+    - rollback replacement
+  blocked_automation_events:
+    - silent document overwrite
+    - silent rights migration
+    - cloud source sharing without permission
+  explanation_required: true
+
+validation_rules:
+  required_checks:
+    - every_event_type_has_trigger
+    - every_payload_field_has_type
+    - every_sensitive_event_has_visibility
+    - all_interactions_are_event_bound
+    - ledger_and_calendar_projection_defined
+    - audit_required_events_listed
+  artifact_valid_when:
+    - event taxonomy is complete for MVP
+    - event payloads are typed
+    - interactions and threads are constrained
+    - ledger/calendar/search behavior is defined
+    - safety/privacy/RBAC rules are mapped
+
+freshness_rules:
+  mark_stale_when:
+    - event names change
+    - payload fields change
+    - interaction rules change
+    - data model changes
+    - ledger/calendar behavior changes
+    - privacy rules change
+
+acceptance_criteria:
+  - MVP events are sufficient for source import, document save, AI request, metadata review, snapshot, and export.
+  - Each event can map to at least one xi-io bin.
+  - Sensitive payload handling is explicit.
+  - Calendar/timeline projection is possible.
+
+open_gaps:
+  - full export event taxonomy
+  - full image generation event taxonomy
+  - full rollback event taxonomy
+  - final RBAC roles
