@@ -1,0 +1,74 @@
+engine: ingress
+version: 1
+status: screen_scraper_initial
+purpose: capture incoming writing, source, media, metadata, provider, and project signals without interpretation
+
+sources:
+  - id: user_input
+    enabled: true
+    examples:
+      - chat_instruction
+      - editor_command
+      - menu_action
+  - id: document_editor
+    enabled: true
+    examples:
+      - document_created
+      - document_saved
+      - heading_created
+      - selection_action_requested
+      - ai_patch_accepted
+  - id: source_import
+    enabled: true
+    examples:
+      - local_file_import
+      - large_paste_import
+      - markdown_import
+      - transcript_import
+  - id: media_import
+    enabled: true
+    examples:
+      - image_upload
+      - clipboard_image
+      - generated_image_result
+  - id: provider_health
+    enabled: true
+    examples:
+      - ollama_health_check
+      - model_list_refresh
+      - provider_failure
+  - id: repo_changes
+    enabled: false
+    notes: future xi-io.net / GitHub integration
+  - id: file_changes
+    enabled: false
+    notes: future local vault watcher
+  - id: calendar_events
+    enabled: false
+    notes: future snapshot/history projection
+
+output:
+  schema: engines/ingress/ingress-schema.json
+  event_stream: runtime/events/events.log.json
+
+rules:
+  no_interpretation: true
+  preserve_raw_payload: true
+  attach_project_id: true
+  attach_source_metadata: true
+  attach_actor: true
+  attach_correlation_id: true
+  classify_later: true
+
+safety:
+  never_capture_secrets: true
+  redact_tokens: true
+  redact_api_keys: true
+  redact_raw_private_text_in_logs: true
+  vault_paths_excluded_from_repo:
+    - vault/**
+    - runtime/**
+    - "*.env"
+    - ".env"
+    - ".env.*"
+  large_payload_policy: store_in_vault_reference_by_id
