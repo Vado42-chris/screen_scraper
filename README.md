@@ -10,6 +10,31 @@ The repository name is functional for now. The product is not a scraper UI. The 
 
 From the user's perspective, the app should feel like a calm document editor with an AI co-writer and a source drawer. The user should not have to manage the underlying knowledge system unless they deliberately open advanced tools.
 
+## Current implementation status
+
+```text
+Planning foundation: active and substantial
+Runtime scaffold: started
+Backend: FastAPI health/provider/event-ledger slice
+Frontend: React/Vite status shell
+Editor: not implemented yet
+Source library: not implemented yet
+Word processor: not ready for local demo yet
+```
+
+The current code slice exists to prove the runtime boundary before the editor lands:
+
+```text
+backend starts
+frontend starts
+frontend calls backend only
+backend checks Ollama
+backend records provider events in SQLite
+runtime data remains ignored by Git
+```
+
+This repository should not be considered locally demo-ready until the first usable word processor loop is implemented.
+
 ## Default user flow
 
 1. Create or open a project.
@@ -52,18 +77,15 @@ Mode 3: LAN-accessible personal server, advanced and authenticated
 Mode 4: optional hosted/SaaS-style services later
 ```
 
-## Backend engines
+## xi-io backend engine alignment
 
 ```text
-ingress/     source import, fetch, parse, clean, normalize
-library/     artifact storage, metadata, search, source reader
-analysis/    structure, tone, tags, bins, summaries, comparisons
-lexicon/     #tags, @refs, [[blocks]], aliases, canonical mappings
-retrieval/   chunking, embeddings, source-context assembly
-writing/     document model, revisions, co-writer operations
-egress/      markdown, docx, pdf, screenplay-style exports
-ai_gateway/  providers, routing, model profiles, privacy rules
+Ingress → Binning → Analysis → Lexicon → Egress
+          ↑                         ↓
+          └────── 43/Ibal Observer ─┘
 ```
+
+Product services such as the document service, source library, retrieval, AI gateway, metadata, rights, snapshots, and exports must plug into this engine model rather than creating a separate backend dialect.
 
 ## AI provider strategy
 
@@ -145,9 +167,37 @@ logs
 API keys
 ```
 
-## MVP slice
+## Runtime scaffold commands
 
-The first build should prove the golden path:
+Backend:
+
+```bash
+bash scripts/dev-backend.sh
+```
+
+Frontend:
+
+```bash
+bash scripts/dev-frontend.sh
+```
+
+Smoke check, with backend running:
+
+```bash
+bash scripts/smoke.sh
+```
+
+Static repository check:
+
+```bash
+bash scripts/check.sh
+```
+
+Note: these scripts have not been verified locally in this remote-only development pass. They should be treated as committed scaffold commands pending local/CI validation.
+
+## MVP golden path
+
+The first build should prove:
 
 ```text
 1. Start backend locally.
@@ -164,6 +214,21 @@ The first build should prove the golden path:
 
 Live web scraping comes later. First prove local import, normalization, retrieval, and writing.
 
-## Status
+## First local demo threshold
 
-Initial repo foundation. Documentation-first scaffold. No production code yet.
+Do not ask the user to pull for demo until the app has at least:
+
+```text
+document create/open/save
+Tiptap/ProseMirror editor behind EditorAdapter
+heading extraction and ActiveOutline
+cursor-aware ChatComposer
+Ollama-backed AI request path
+reviewable AI suggestion preview
+source import/read/search skeleton
+source-aware AI request skeleton
+metadata proposal/review panel
+image insertion placeholder or first image insertion path
+Markdown export
+basic snapshot/event history
+```
