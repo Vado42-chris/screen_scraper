@@ -1,0 +1,61 @@
+engine: observer
+version: 1
+status: screen_scraper_initial
+observer_layer: 43
+observer_name: Ibal
+
+purpose: detect unresolved state, drift, contradiction, missing evidence, unsafe egress, and stale project artifacts
+
+rules:
+  detect_stale_prompts: true
+  detect_missing_source_provenance: true
+  detect_unknown_rights: true
+  detect_missing_alt_text: true
+  detect_unapproved_metadata: true
+  detect_unresolved_comments: true
+  detect_unaccepted_suggestions: true
+  detect_provider_failures: true
+  detect_cloud_permission_required: true
+  detect_export_blockers: true
+  detect_repo_safety_warnings: true
+  detect_freshness_stale_docs: true
+  detect_validation_blockers: true
+
+severity:
+  low:
+    behavior: quiet_badge
+  medium:
+    behavior: panel_warning
+  high:
+    behavior: blocking_warning_with_recovery
+  critical:
+    behavior: block_egress_until_resolved
+
+user_visibility:
+  default_mode:
+    show_low: false
+    show_medium: true
+    show_high: true
+    show_critical: true
+  expert_mode:
+    show_raw_flags: true
+    show_bin_links: true
+    show_event_payload_refs: true
+
+safety:
+  never_autofix_rights: true
+  never_autofix_user_text: true
+  never_send_private_content_to_cloud: true
+  require_user_approval_for_destructive_recovery: true
+  store_private_details_in_vault_only: true
+
+outputs:
+  events:
+    - observer.warning_created
+    - observer.warning_resolved
+    - observer.warning_dismissed
+    - observer.freshness_marked_stale
+    - observer.validation_blocked
+    - observer.snapshot_recommended
+    - observer.export_blocker_created
+    - observer.repo_safety_warning_created
