@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://xi-io.local/screen_scraper/engines/analysis/analysis-schema.json",
+  "title": "screen_scraper Analysis Result Schema",
+  "type": "object",
+  "required": [
+    "analysis_id",
+    "project_id",
+    "analysis_type",
+    "created_at",
+    "target_type",
+    "target_id",
+    "summary",
+    "confidence",
+    "derived_not_truth",
+    "results"
+  ],
+  "properties": {
+    "analysis_id": { "type": "string", "format": "uuid" },
+    "project_id": { "type": "string" },
+    "event_id": { "type": ["string", "null"] },
+    "correlation_id": { "type": ["string", "null"] },
+    "analysis_type": {
+      "type": "string",
+      "enum": [
+        "document_structure",
+        "source_relevance",
+        "metadata_review",
+        "rights_review",
+        "media_review",
+        "export_readiness",
+        "story_continuity",
+        "provider_health",
+        "runtime_health",
+        "custom"
+      ]
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "target_type": { "type": "string" },
+    "target_id": { "type": "string" },
+    "summary": { "type": "string" },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "impact": { "type": ["string", "null"], "enum": ["low", "medium", "high", null] },
+    "stability": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "urgency": { "type": ["string", "null"], "enum": ["low", "medium", "high", null] },
+    "derived_not_truth": { "type": "boolean", "default": true },
+    "explainability": {
+      "type": "object",
+      "properties": {
+        "user_visible_reason": { "type": ["string", "null"] },
+        "source_refs": { "type": "array", "items": { "type": "string" } },
+        "event_refs": { "type": "array", "items": { "type": "string" } },
+        "correction_path": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["result_type", "status", "message"],
+        "properties": {
+          "result_type": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["info", "warning", "blocked", "resolved", "needs_review"]
+          },
+          "message": { "type": "string" },
+          "affected_item_type": { "type": ["string", "null"] },
+          "affected_item_id": { "type": ["string", "null"] },
+          "suggested_action_id": { "type": ["string", "null"] },
+          "payload": { "type": "object", "additionalProperties": true }
+        },
+        "additionalProperties": false
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "properties": {
+        "contains_private_text": { "type": "boolean" },
+        "repo_safe": { "type": "boolean" },
+        "cloud_safe": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
