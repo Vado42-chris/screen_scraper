@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://xi-io.local/screen_scraper/engines/egress/egress-schema.json",
+  "title": "screen_scraper Egress Action Schema",
+  "type": "object",
+  "required": [
+    "egress_id",
+    "project_id",
+    "action_type",
+    "created_at",
+    "approval_state",
+    "target_type",
+    "target_id",
+    "safety"
+  ],
+  "properties": {
+    "egress_id": { "type": "string", "format": "uuid" },
+    "project_id": { "type": "string" },
+    "correlation_id": { "type": ["string", "null"] },
+    "causation_event_id": { "type": ["string", "null"] },
+    "action_type": {
+      "type": "string",
+      "enum": [
+        "ui_update",
+        "document_patch",
+        "document_generate",
+        "source_library_update",
+        "metadata_update",
+        "rights_update",
+        "media_asset_update",
+        "snapshot_create",
+        "rollback_restore",
+        "export_generate",
+        "provider_call",
+        "repo_action",
+        "notification",
+        "external_tool_call"
+      ]
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "actor_type": {
+      "type": "string",
+      "enum": ["user", "system", "ai", "job", "provider"]
+    },
+    "target_type": { "type": "string" },
+    "target_id": { "type": "string" },
+    "approval_state": {
+      "type": "string",
+      "enum": ["not_required", "required", "approved", "rejected", "previewed", "blocked"]
+    },
+    "preview_ref": {
+      "type": ["object", "null"],
+      "properties": {
+        "summary": { "type": "string" },
+        "diff_ref": { "type": ["string", "null"] },
+        "vault_artifact_id": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "output_ref": {
+      "type": ["object", "null"],
+      "properties": {
+        "storage_mode": {
+          "type": "string",
+          "enum": ["ui_only", "vault_ref", "file_path", "repo_path", "external_ref", "none"]
+        },
+        "path": { "type": ["string", "null"] },
+        "vault_artifact_id": { "type": ["string", "null"] },
+        "hash": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "events_emitted": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "safety": {
+      "type": "object",
+      "required": ["repo_safe", "cloud_safe", "requires_user_approval", "destructive"],
+      "properties": {
+        "repo_safe": { "type": "boolean" },
+        "cloud_safe": { "type": "boolean" },
+        "requires_user_approval": { "type": "boolean" },
+        "destructive": { "type": "boolean" },
+        "redaction_required": { "type": "boolean" },
+        "blocked_reason": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
