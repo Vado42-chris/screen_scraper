@@ -1,0 +1,30 @@
+app:
+  name: screen_scraper
+  environment: development
+  api_base_url: http://127.0.0.1:8000
+  frontend_origin: http://127.0.0.1:5173
+
+runtime:
+  # Example only. Real local paths belong in ignored local config.
+  root: _runtime
+  sqlite_path: _runtime/events.sqlite3
+  vault_root: _runtime/vault
+
+privacy:
+  default_mode: local_only
+  cloud_requires_confirmation: true
+  log_private_payloads: false
+  redact_local_paths_in_public_logs: true
+
+features:
+  provider_status: true
+  event_ledger: true
+  document_editor: false
+  source_library: false
+  metadata_review: false
+  export_markdown: false
+
+ui:
+  default_workspace: write
+  show_engine_debug_by_default: false
+  show_raw_event_payloads_by_default: false
