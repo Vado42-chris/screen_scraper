@@ -1,0 +1,73 @@
+engine: lexicon
+version: 1
+status: screen_scraper_initial
+purpose: normalize writing, source, planning, rights, media, and UI command language across the app
+
+rules:
+  normalize_terms: true
+  support_multi_domain: true
+  link_to_bins: true
+  support_user_aliases: true
+  support_project_specific_terms: true
+  preserve_user_language_when_possible: true
+
+primitive_syntax:
+  tags:
+    prefix: "#"
+    examples:
+      - "#source"
+      - "#chapter"
+      - "#needs_review"
+  references:
+    prefix: "@"
+    examples:
+      - "@character:ibal"
+      - "@location:shadowcove"
+      - "@source:duet"
+  blocks:
+    wrapper: "[[...]]"
+    examples:
+      - "[[block:scene_pattern]]"
+      - "[[prompt:section]]"
+      - "[[image:prompt]]"
+      - "[[glossary:term]]"
+
+terms:
+  document:
+    aliases: [manuscript, draft, file, artifact]
+    domain: writing
+  section:
+    aliases: [chapter_section, scene, beat, passage]
+    domain: writing
+  source:
+    aliases: [reference, research_item, evidence]
+    domain: source_library
+  prompt:
+    aliases: [section_prompt, drafting_prompt, planning_prompt]
+    domain: planning
+  block:
+    aliases: [reusable_block, snippet, pattern]
+    domain: lexicon
+  character:
+    aliases: [cast_member, persona, figure]
+    domain: story
+  location:
+    aliases: [place, setting, site]
+    domain: story
+  media_asset:
+    aliases: [image, figure, illustration]
+    domain: media
+  license:
+    aliases: [rights, usage_rights, copyright_status]
+    domain: rights
+  egress:
+    aliases: [output, export, publish, route]
+    domain: engine
+  ingress:
+    aliases: [input, import, capture]
+    domain: engine
+
+outputs:
+  schema: engines/lexicon/lexicon-schema.json
+  aliases: engines/lexicon/aliases.yaml
+  domain_terms: engines/lexicon/domain-terms.yaml
