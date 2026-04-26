@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://xi-io.local/screen_scraper/engines/lexicon/lexicon-schema.json",
+  "title": "screen_scraper Lexicon Entry Schema",
+  "type": "object",
+  "required": [
+    "term_id",
+    "project_id",
+    "canonical_term",
+    "term_type",
+    "created_at",
+    "status"
+  ],
+  "properties": {
+    "term_id": { "type": "string", "format": "uuid" },
+    "project_id": { "type": "string" },
+    "canonical_term": { "type": "string" },
+    "display_label": { "type": ["string", "null"] },
+    "term_type": {
+      "type": "string",
+      "enum": [
+        "tag",
+        "reference",
+        "block",
+        "prompt",
+        "character",
+        "location",
+        "source",
+        "media",
+        "license",
+        "glossary_term",
+        "command",
+        "domain_term",
+        "custom"
+      ]
+    },
+    "domain": { "type": ["string", "null"] },
+    "aliases": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "definition": { "type": ["string", "null"] },
+    "related_terms": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "bin_ids": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "source_refs": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": ["string", "null"], "format": "date-time" },
+    "status": {
+      "type": "string",
+      "enum": ["proposed", "approved", "edited", "deprecated", "rejected", "needs_review"]
+    },
+    "generated_by": {
+      "type": ["object", "null"],
+      "properties": {
+        "actor_type": { "type": "string", "enum": ["user", "system", "ai", "import"] },
+        "model": { "type": ["string", "null"] },
+        "confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "derived_not_truth": { "type": "boolean", "default": true }
+  },
+  "additionalProperties": false
+}
