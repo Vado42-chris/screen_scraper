@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://xi-io.local/screen_scraper/engines/binning/binning-schema.json",
+  "title": "screen_scraper Binning Result Schema",
+  "type": "object",
+  "required": [
+    "binning_id",
+    "event_id",
+    "project_id",
+    "created_at",
+    "primary_bins",
+    "observer_flags"
+  ],
+  "properties": {
+    "binning_id": { "type": "string", "format": "uuid" },
+    "event_id": { "type": "string" },
+    "project_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "primary_bins": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/bin_assignment" }
+    },
+    "secondary_bins": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/bin_assignment" },
+      "default": []
+    },
+    "related_bins": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "observer_flags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "classification_basis": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "event_type",
+          "target_type",
+          "source_type",
+          "document_section",
+          "semantic_tag",
+          "rights_status",
+          "metadata_status",
+          "provider_capability",
+          "analysis_domain",
+          "observer_flag",
+          "manual"
+        ]
+      }
+    },
+    "derived_not_truth": { "type": "boolean", "default": true },
+    "user_correction_path": { "type": ["string", "null"] }
+  },
+  "$defs": {
+    "bin_assignment": {
+      "type": "object",
+      "required": ["bin_id", "bin_key", "confidence"],
+      "properties": {
+        "bin_id": { "type": "string" },
+        "bin_key": { "type": "string" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "reason": { "type": ["string", "null"] },
+        "assigned_by": {
+          "type": "string",
+          "enum": ["system", "ai", "user", "rule", "imported"]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
