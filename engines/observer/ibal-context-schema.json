@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://xi-io.local/screen_scraper/engines/observer/ibal-context-schema.json",
+  "title": "screen_scraper Ibal Observer Context Schema",
+  "type": "object",
+  "required": [
+    "observer_context_id",
+    "project_id",
+    "created_at",
+    "scope",
+    "freshness_state",
+    "validation_state",
+    "warnings"
+  ],
+  "properties": {
+    "observer_context_id": { "type": "string", "format": "uuid" },
+    "project_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "scope": {
+      "type": "object",
+      "required": ["scope_type"],
+      "properties": {
+        "scope_type": {
+          "type": "string",
+          "enum": ["project", "document", "section", "source", "media_asset", "export", "provider", "repo", "runtime"]
+        },
+        "target_id": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "freshness_state": {
+      "type": "string",
+      "enum": ["missing", "fresh", "needs_review", "stale", "blocked"]
+    },
+    "validation_state": {
+      "type": "string",
+      "enum": ["not_checked", "valid", "warning", "blocked"]
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["warning_id", "flag", "severity", "message", "status"],
+        "properties": {
+          "warning_id": { "type": "string" },
+          "flag": { "type": "string" },
+          "severity": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+          "message": { "type": "string" },
+          "affected_item_type": { "type": ["string", "null"] },
+          "affected_item_id": { "type": ["string", "null"] },
+          "suggested_action_id": { "type": ["string", "null"] },
+          "status": { "type": "string", "enum": ["open", "dismissed", "resolved", "blocked"] },
+          "created_at": { "type": ["string", "null"], "format": "date-time" },
+          "resolved_at": { "type": ["string", "null"], "format": "date-time" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "linked_events": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "linked_bins": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "linked_docs": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "privacy": {
+      "type": "object",
+      "properties": {
+        "repo_safe": { "type": "boolean" },
+        "contains_private_text": { "type": "boolean" },
+        "vault_only_details": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
