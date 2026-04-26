@@ -1,0 +1,90 @@
+engine: analysis
+version: 1
+status: screen_scraper_initial
+purpose: interpret writing, source, metadata, media, rights, planning, export, and provider events into actionable user-facing insights
+
+metrics:
+  impact:
+    scale: low|medium|high
+  stability:
+    range: 0.0-1.0
+  urgency:
+    scale: low|medium|high
+  confidence:
+    range: 0.0-1.0
+  source_relevance:
+    range: 0.0-1.0
+  metadata_confidence:
+    range: 0.0-1.0
+
+rules:
+  derive_impact: true
+  derive_stability: true
+  derive_resolution_path: true
+  derive_source_relevance: true
+  derive_metadata_confidence: true
+  mark_ai_labels_as_derived_not_truth: true
+  require_user_correction_path: true
+
+analysis_domains:
+  document_structure:
+    enabled: true
+    outputs:
+      - outline_health
+      - heading_gaps
+      - section_prompt_status
+  source_relevance:
+    enabled: true
+    outputs:
+      - source_match_card
+      - evidence_drawer_payload
+      - citation_chip_suggestion
+  metadata_review:
+    enabled: true
+    outputs:
+      - proposed_metadata
+      - confidence_badge
+      - review_required_flag
+  rights_review:
+    enabled: true
+    outputs:
+      - unknown_rights_warning
+      - license_conflict_warning
+      - migration_preview_flag
+  media_review:
+    enabled: true
+    outputs:
+      - missing_alt_text_warning
+      - caption_suggestion
+      - placement_warning
+  export_readiness:
+    enabled: true
+    outputs:
+      - unresolved_comments
+      - unaccepted_suggestions
+      - missing_metadata
+      - missing_alt_text
+      - stale_prompts
+  story_continuity:
+    enabled: true
+    outputs:
+      - character_location_conflict
+      - open_question
+      - continuity_warning
+
+outputs:
+  schema: engines/analysis/analysis-schema.json
+
+linking:
+  link_related_events: true
+  link_related_docs: true
+  link_related_decisions: true
+  link_related_sources: true
+  link_related_story_nodes: true
+  link_related_media_assets: true
+
+safety:
+  do_not_treat_analysis_as_fact: true
+  require_explainability_for_user_visible_warnings: true
+  hide_private_source_text_from_logs: true
+  cloud_analysis_requires_policy_approval: true
