@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://xi-io.local/screen_scraper/engines/ingress/ingress-schema.json",
+  "title": "screen_scraper Ingress Event Schema",
+  "type": "object",
+  "required": [
+    "event_id",
+    "project_id",
+    "source_id",
+    "event_type",
+    "captured_at",
+    "actor_type",
+    "target_type",
+    "correlation_id",
+    "payload_ref",
+    "safety"
+  ],
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid" },
+    "project_id": { "type": "string" },
+    "source_id": { "type": "string" },
+    "event_type": { "type": "string" },
+    "captured_at": { "type": "string", "format": "date-time" },
+    "actor_type": {
+      "type": "string",
+      "enum": ["user", "system", "ai", "job", "provider", "unknown"]
+    },
+    "actor_id": { "type": ["string", "null"] },
+    "target_type": {
+      "type": "string",
+      "enum": [
+        "project",
+        "document",
+        "section",
+        "source",
+        "media_asset",
+        "metadata",
+        "rights_profile",
+        "provider",
+        "export",
+        "snapshot",
+        "system",
+        "unknown"
+      ]
+    },
+    "target_id": { "type": ["string", "null"] },
+    "correlation_id": { "type": "string" },
+    "causation_id": { "type": ["string", "null"] },
+    "payload_ref": {
+      "type": "object",
+      "required": ["storage_mode"],
+      "properties": {
+        "storage_mode": {
+          "type": "string",
+          "enum": ["inline_safe", "vault_ref", "redacted", "none"]
+        },
+        "vault_artifact_id": { "type": ["string", "null"] },
+        "summary": { "type": ["string", "null"] },
+        "hash": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "source_metadata": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "safety": {
+      "type": "object",
+      "required": [
+        "contains_secret",
+        "contains_private_text",
+        "repo_safe",
+        "cloud_safe"
+      ],
+      "properties": {
+        "contains_secret": { "type": "boolean" },
+        "contains_private_text": { "type": "boolean" },
+        "repo_safe": { "type": "boolean" },
+        "cloud_safe": { "type": "boolean" },
+        "redaction_applied": { "type": "boolean" },
+        "visibility": {
+          "type": "string",
+          "enum": ["public", "tenant", "project", "private", "local_only", "vault_only"]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
