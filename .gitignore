@@ -1,0 +1,160 @@
+# -----------------------------------------------------------------------------
+# screen_scraper / local-first source-aware writing app
+# -----------------------------------------------------------------------------
+# Rule: source code and docs belong in Git.
+# Runtime data, secrets, user vaults, source libraries, embeddings, caches,
+# model files, exports, logs, and local machine configs do not.
+# -----------------------------------------------------------------------------
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.env
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.secret
+*.secrets
+secrets.*
+**/secrets/**
+**/.secrets/**
+
+# Local app config, keep examples only
+config/local.yaml
+config/local.*.yaml
+config/*.local.yaml
+config/*.private.yaml
+config/providers.yaml
+config/provider-secrets.yaml
+config/ai.keys.yaml
+!config/*.example.yaml
+!config/**/*.example.yaml
+
+# Runtime folders
+_runtime/
+*_runtime/
+_screen_scraper_runtime/
+_screen_scraper_dev_runtime/
+_screen_scraper_test_runtime/
+runtime/
+var/
+
+# User vaults and private libraries
+vault/
+vaults/
+library/
+libraries/
+sources/
+source-library/
+documents/
+exports/
+imports/
+archive/
+private/
+user-data/
+
+# AI/model artifacts
+ollama-models/
+models/
+model-cache/
+*.gguf
+*.safetensors
+*.bin
+*.onnx
+*.pt
+*.pth
+*.ckpt
+*.tflite
+*.mlmodel
+*.model
+
+# Embeddings, vector stores, analysis caches
+embeddings/
+indexes/
+vector-store/
+vector_stores/
+analysis-cache/
+analysis_cache/
+retrieval-cache/
+retrieval_cache/
+chunk-cache/
+summary-cache/
+.cache/
+*.faiss
+*.hnsw
+*.ann
+*.index
+*.sqlite-shm
+*.sqlite-wal
+
+# Databases, unless deliberately added later as fixtures
+*.db
+*.sqlite
+*.sqlite3
+*.duckdb
+*.parquet
+
+# Logs and diagnostics
+logs/
+*.log
+*.pid
+*.pid.lock
+coverage/
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+ENV/
+build/
+dist/
+*.egg-info/
+.pyre/
+
+# Node / frontend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.vite/
+.next/
+out/
+coverage-final.json
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/settings.json
+.vscode/tasks.json
+.vscode/launch.json
+*.swp
+*.swo
+*~
+
+# Generated documents and binary exports
+*.pdf
+*.docx
+*.odt
+*.rtf
+*.fdx
+*.epub
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
