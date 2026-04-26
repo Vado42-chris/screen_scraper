@@ -1,0 +1,901 @@
+template_id: data-model-template
+template_version: 1.0.0
+template_status: screen_scraper_initial
+artifact_type: data_model
+required_for: every_project_with_structured_data
+
+artifact_metadata:
+  artifact_id: screen-scraper-document-data-model-v1
+  tenant_id: local_default
+  project_id: screen_scraper
+  parent_id: null
+  model_name: document_data_model
+  product_area: word_processor_core
+  owner: Chris Hallberg
+  author_actor: ChatGPT
+  reviewer: Chris Hallberg
+  created_at: 2026-04-26
+  updated_at: 2026-04-26
+  freshness_state: fresh
+  validation_state: not_checked
+  visibility: public
+  repo_sync_state: synced
+
+purpose: >
+  Define the structured document, planning, source-reference, media, metadata,
+  rights, snapshot, and event touchpoints required for the screen_scraper cooperative
+  word processor MVP.
+
+source_evidence:
+  tier_0_local:
+    local_files:
+      - /media/chrishallberg/Storage 22/999_Work/003_Projects/014_scripts
+      - /media/chrishallberg/Storage 11/01_Work/14_scripts
+    old_version_lineage: []
+    screenshots_or_exports: []
+    notes:
+      - scripts_plan.md source conversation uploaded to project
+  tier_1_repo:
+    repo_files:
+      - docs/word-processor-requirements-v1.md
+      - docs/active-outline-and-section-prompts-v1.md
+      - docs/document-media-layout-and-generation-v1.md
+      - docs/inserted-item-metadata-approval-v1.md
+      - docs/license-and-rights-metadata-v1.md
+      - docs/story-spine-and-storyboard-system-v1.md
+      - docs/event-ledger-and-snapshots-v1.md
+    schemas:
+      - engines/ingress/ingress-schema.json
+      - engines/analysis/analysis-schema.json
+      - engines/egress/egress-schema.json
+    source_models: []
+  tier_2_management:
+    workbench_docs:
+      - xi-io.net docs/templates/universal/data-model-template.yaml
+      - xi-io.net docs/backend-engine-architecture-v1.md
+    product_requirements:
+      - docs/planning/project-brief.md, planned
+    decisions:
+      - The app is a cooperative word processor with hidden event/source/analysis engines.
+  missing_evidence:
+    - final editor library decision
+    - persistence implementation choice beyond SQLite/local vault baseline
+    - final export pipeline implementation
+
+objects:
+  - object_name: Project
+    object_type: aggregate_root
+    description: Top-level writing workspace containing documents, sources, media, planning objects, settings, rights defaults, and snapshots.
+    owner: user
+    lifecycle_states: [created, active, archived, deleted]
+    visibility_default: local_only
+    storage_location: database
+    repo_safe: false
+    fields:
+      - name: project_id
+        type: uuid
+        required: true
+        default: null
+        source: system
+        validation: unique
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: title
+        type: string
+        required: true
+        default: Untitled Project
+        source: user
+        validation: non_empty
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: default_rights_profile_id
+        type: uuid|null
+        required: false
+        default: null
+        source: user/system
+        validation: references ProjectRightsProfile
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: vault_root_ref
+        type: string
+        required: true
+        default: null
+        source: user
+        validation: local path reference, not public repo safe
+        pii_or_sensitive: true
+        visibility: local_only
+        redaction_rule: redact_path_in_public_logs
+    relationships:
+      - related_object: Document
+        relationship_type: owns
+        cardinality: one_to_many
+        required: false
+      - related_object: SourceArtifact
+        relationship_type: owns
+        cardinality: one_to_many
+        required: false
+      - related_object: MediaAsset
+        relationship_type: owns
+        cardinality: one_to_many
+        required: false
+      - related_object: StoryNode
+        relationship_type: owns
+        cardinality: one_to_many
+        required: false
+    events_created: [project.created, vault.selected]
+    events_consumed: [snapshot.created]
+    ledger_entries: [project]
+    audit_required_actions: [vault_selected, rights_profile_changed]
+
+  - object_name: Document
+    object_type: aggregate_root
+    description: User-authored writing artifact, such as a manuscript, chapter, article, scene, source note, or draft.
+    owner: user
+    lifecycle_states: [created, drafting, reviewing, locked, archived, deleted]
+    visibility_default: local_only
+    storage_location: database
+    repo_safe: false
+    fields:
+      - name: document_id
+        type: uuid
+        required: true
+        default: null
+        source: system
+        validation: unique
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: project_id
+        type: uuid
+        required: true
+        default: null
+        source: system
+        validation: references Project
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: title
+        type: string
+        required: true
+        default: Untitled Document
+        source: user
+        validation: non_empty
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: document_type
+        type: string
+        required: true
+        default: blank_document
+        source: user/template
+        validation: blank_document|article|chapter|scene|screenplay_scene|transcript_notes|source_analysis|worldbuilding_note
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: editor_state_ref
+        type: vault_or_database_ref
+        required: true
+        default: null
+        source: editor
+        validation: stored outside repo
+        pii_or_sensitive: true
+        visibility: vault_only
+        redaction_rule: reference_only
+      - name: markdown_snapshot_ref
+        type: vault_ref|null
+        required: false
+        default: null
+        source: export/snapshot
+        validation: stored outside repo unless explicit safe fixture
+        pii_or_sensitive: true
+        visibility: vault_only
+        redaction_rule: reference_only
+    relationships:
+      - related_object: DocumentVersion
+        relationship_type: has_versions
+        cardinality: one_to_many
+        required: false
+      - related_object: SectionPrompt
+        relationship_type: has_prompts
+        cardinality: one_to_many
+        required: false
+      - related_object: SourceReference
+        relationship_type: has_references
+        cardinality: one_to_many
+        required: false
+      - related_object: ImagePlacement
+        relationship_type: has_media_placements
+        cardinality: one_to_many
+        required: false
+      - related_object: StoryNode
+        relationship_type: may_link_to
+        cardinality: many_to_many
+        required: false
+    events_created: [document.created, document.saved, document.version_saved]
+    events_consumed: [ai.completed, suggestion.accepted, snapshot.created]
+    ledger_entries: [document]
+    audit_required_actions: [delete_document, restore_version, apply_ai_patch]
+
+  - object_name: DocumentVersion
+    object_type: entity
+    description: Named or automatic meaningful version of a document used for history, comparison, and rollback.
+    owner: user/system
+    lifecycle_states: [created, retained, restored, archived]
+    visibility_default: local_only
+    storage_location: database
+    repo_safe: false
+    fields:
+      - name: version_id
+        type: uuid
+        required: true
+        default: null
+        source: system
+        validation: unique
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: document_id
+        type: uuid
+        required: true
+        default: null
+        source: system
+        validation: references Document
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: label
+        type: string|null
+        required: false
+        default: null
+        source: user/system
+        validation: optional
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: content_ref
+        type: vault_or_database_ref
+        required: true
+        default: null
+        source: editor
+        validation: reference only
+        pii_or_sensitive: true
+        visibility: vault_only
+        redaction_rule: reference_only
+    relationships:
+      - related_object: Snapshot
+        relationship_type: may_be_included_in
+        cardinality: many_to_many
+        required: false
+    events_created: [document.version_saved]
+    events_consumed: [rollback.completed]
+    ledger_entries: [document_version]
+    audit_required_actions: [restore_version]
+
+  - object_name: HeadingAnchor
+    object_type: entity
+    description: Stable anchor for H1-H6 headings used by active outline, section prompts, navigation, and AI cursor context.
+    owner: system
+    lifecycle_states: [active, renamed, moved, deleted]
+    visibility_default: project
+    storage_location: database
+    repo_safe: false
+    fields:
+      - name: heading_id
+        type: uuid_or_stable_editor_id
+        required: true
+        default: null
+        source: editor
+        validation: unique within document
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: document_id
+        type: uuid
+        required: true
+        default: null
+        source: editor
+        validation: references Document
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: level
+        type: integer
+        required: true
+        default: 1
+        source: editor
+        validation: 1..6
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: text
+        type: string
+        required: true
+        default: null
+        source: user
+        validation: non_empty
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+    relationships:
+      - related_object: SectionPrompt
+        relationship_type: may_have
+        cardinality: one_to_one
+        required: false
+      - related_object: StoryNode
+        relationship_type: may_link_to
+        cardinality: one_to_one
+        required: false
+    events_created: [heading.created, heading.updated]
+    events_consumed: [outline.generate_prompt_for_heading]
+    ledger_entries: [document_outline]
+    audit_required_actions: []
+
+  - object_name: SectionPrompt
+    object_type: entity
+    description: Editable planning/drafting prompt attached to a heading/section and visible through active outline/right panel.
+    owner: user/system
+    lifecycle_states: [missing, draft, ready, used, stale, needs_update, resolved]
+    visibility_default: project
+    storage_location: database
+    repo_safe: false
+    fields:
+      - name: section_prompt_id
+        type: uuid
+        required: true
+        default: null
+        source: system
+        validation: unique
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: heading_id
+        type: uuid_or_stable_editor_id
+        required: true
+        default: null
+        source: editor
+        validation: references HeadingAnchor
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: prompt_text_ref
+        type: database_or_vault_ref
+        required: true
+        default: null
+        source: user/ai
+        validation: private content stored outside repo
+        pii_or_sensitive: true
+        visibility: vault_only
+        redaction_rule: reference_only
+      - name: status
+        type: string
+        required: true
+        default: draft
+        source: user/system
+        validation: missing|draft|ready|used|stale|needs_update|resolved
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+    relationships:
+      - related_object: SourceReference
+        relationship_type: may_use
+        cardinality: many_to_many
+        required: false
+      - related_object: StoryNode
+        relationship_type: may_link_to
+        cardinality: one_to_one
+        required: false
+    events_created: [section_prompt.created, section_prompt.generated, section_prompt.marked_stale]
+    events_consumed: [outline.draft_section_from_prompt]
+    ledger_entries: [section_prompt]
+    audit_required_actions: [ai_generate_prompt, draft_from_prompt]
+
+  - object_name: SourceReference
+    object_type: entity
+    description: Citation/reference link from document or prompt to source artifact or excerpt.
+    owner: user/system
+    lifecycle_states: [proposed, inserted, approved, stale, removed]
+    visibility_default: project
+    storage_location: database
+    repo_safe: false
+    fields:
+      - name: source_reference_id
+        type: uuid
+        required: true
+        default: null
+        source: system
+        validation: unique
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: source_id
+        type: uuid
+        required: true
+        default: null
+        source: source_library
+        validation: references SourceArtifact
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: excerpt_ref
+        type: vault_ref|null
+        required: false
+        default: null
+        source: retrieval
+        validation: private excerpt stored by reference
+        pii_or_sensitive: true
+        visibility: vault_only
+        redaction_rule: reference_only
+    relationships:
+      - related_object: Document
+        relationship_type: may_attach_to
+        cardinality: many_to_one
+        required: false
+      - related_object: SectionPrompt
+        relationship_type: may_attach_to
+        cardinality: many_to_one
+        required: false
+    events_created: [source_reference.inserted]
+    events_consumed: [source.imported, retrieval.performed]
+    ledger_entries: [source_reference]
+    audit_required_actions: [insert_source_reference]
+
+  - object_name: MediaAsset
+    object_type: entity
+    description: Uploaded, pasted, generated, imported, or derived image/media file stored in the project vault.
+    owner: user/system
+    lifecycle_states: [created, proposed_metadata, approved, used, unused, archived, deleted]
+    visibility_default: local_only
+    storage_location: vault
+    repo_safe: false
+    fields:
+      - name: media_asset_id
+        type: uuid
+        required: true
+        default: null
+        source: system
+        validation: unique
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: file_ref
+        type: vault_ref
+        required: true
+        default: null
+        source: media_service
+        validation: vault only
+        pii_or_sensitive: true
+        visibility: vault_only
+        redaction_rule: reference_only
+      - name: asset_type
+        type: string
+        required: true
+        default: image
+        source: system
+        validation: image|audio|video|other_later
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+    relationships:
+      - related_object: ImagePlacement
+        relationship_type: may_have_placements
+        cardinality: one_to_many
+        required: false
+      - related_object: InsertedItemMetadata
+        relationship_type: has_metadata
+        cardinality: one_to_one
+        required: false
+    events_created: [image.uploaded, image.generated]
+    events_consumed: [metadata.generated]
+    ledger_entries: [media]
+    audit_required_actions: [delete_media_asset]
+
+  - object_name: ImagePlacement
+    object_type: entity
+    description: Placement, anchor, size, wrapping, caption, and alt-text behavior for a MediaAsset inside a document.
+    owner: user/system
+    lifecycle_states: [inserted, moved, resized, wrapped, removed]
+    visibility_default: project
+    storage_location: database
+    repo_safe: false
+    fields:
+      - name: image_placement_id
+        type: uuid
+        required: true
+        default: null
+        source: system
+        validation: unique
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: document_id
+        type: uuid
+        required: true
+        default: null
+        source: document_editor
+        validation: references Document
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: media_asset_id
+        type: uuid
+        required: true
+        default: null
+        source: media_service
+        validation: references MediaAsset
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: anchor_ref
+        type: editor_anchor
+        required: true
+        default: null
+        source: editor
+        validation: stable block/range anchor
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: layout_mode
+        type: string
+        required: true
+        default: block
+        source: user/system
+        validation: inline|block|fixed|floating|background|header|footer
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+    relationships:
+      - related_object: MediaAsset
+        relationship_type: places
+        cardinality: many_to_one
+        required: true
+    events_created: [image.inserted, image.moved, image.resized, image.wrapped]
+    events_consumed: [image.generated]
+    ledger_entries: [media_placement]
+    audit_required_actions: []
+
+  - object_name: InsertedItemMetadata
+    object_type: entity
+    description: Generated, user-reviewed metadata for images, sources, references, blocks, prompts, exports, and other inserted items.
+    owner: user/system
+    lifecycle_states: [none, proposed, approved, edited, rejected, stale, needs_review]
+    visibility_default: project
+    storage_location: database
+    repo_safe: false
+    fields:
+      - name: metadata_id
+        type: uuid
+        required: true
+        default: null
+        source: metadata_service
+        validation: unique
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: item_id
+        type: uuid
+        required: true
+        default: null
+        source: system
+        validation: references inserted item
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: item_type
+        type: string
+        required: true
+        default: null
+        source: system
+        validation: image|source_reference|block|prompt|table|figure|term|character|location|export
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: status
+        type: string
+        required: true
+        default: proposed
+        source: metadata_service/user
+        validation: none|proposed|approved|edited|rejected|stale|needs_review
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+    relationships:
+      - related_object: ProjectRightsProfile
+        relationship_type: may_inherit_from
+        cardinality: many_to_one
+        required: false
+    events_created: [metadata.generated, metadata.approved, metadata.edited, metadata.rejected]
+    events_consumed: [image.inserted, source_reference.inserted]
+    ledger_entries: [metadata]
+    audit_required_actions: [approve_metadata, reject_metadata]
+
+  - object_name: ProjectRightsProfile
+    object_type: entity
+    description: Default author, rights holder, license, usage policy, and credit metadata inherited by project items.
+    owner: user
+    lifecycle_states: [created, active, updated, migrated, archived]
+    visibility_default: project
+    storage_location: database
+    repo_safe: false
+    fields:
+      - name: rights_profile_id
+        type: uuid
+        required: true
+        default: null
+        source: system
+        validation: unique
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: default_author
+        type: string
+        required: false
+        default: null
+        source: user
+        validation: optional
+        pii_or_sensitive: true
+        visibility: project
+        redaction_rule: redact_if_requested
+      - name: default_license_id
+        type: string
+        required: true
+        default: ALL_RIGHTS_RESERVED
+        source: user
+        validation: license registry id
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: default_rights_status
+        type: string
+        required: true
+        default: protected
+        source: user
+        validation: protected|open|public_domain|restricted|unknown|mixed|needs_review
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+    relationships:
+      - related_object: InsertedItemMetadata
+        relationship_type: inherited_by
+        cardinality: one_to_many
+        required: false
+    events_created: [rights.project_profile_created, rights.project_profile_updated]
+    events_consumed: [rights.migration_applied]
+    ledger_entries: [rights]
+    audit_required_actions: [change_project_rights_profile, apply_rights_migration]
+
+  - object_name: StoryNode
+    object_type: entity
+    description: Planning unit in the story spine, such as part, chapter, section, scene, beat, or custom user unit.
+    owner: user/system
+    lifecycle_states: [idea, planned, needs_research, ready_to_draft, drafting, drafted, needs_revision, reviewed, locked, cut]
+    visibility_default: project
+    storage_location: database
+    repo_safe: false
+    fields:
+      - name: story_node_id
+        type: uuid
+        required: true
+        default: null
+        source: system
+        validation: unique
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: parent_id
+        type: uuid|null
+        required: false
+        default: null
+        source: user/system
+        validation: references StoryNode
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: node_type
+        type: string
+        required: true
+        default: custom
+        source: user/template/system
+        validation: part|chapter|section|scene|beat|appendix|custom
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: title
+        type: string
+        required: true
+        default: Untitled Node
+        source: user
+        validation: non_empty
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+    relationships:
+      - related_object: HeadingAnchor
+        relationship_type: may_link_to
+        cardinality: one_to_one
+        required: false
+      - related_object: SectionPrompt
+        relationship_type: may_generate
+        cardinality: one_to_many
+        required: false
+    events_created: [plan.node_created, plan.node_reordered, plan.card_updated]
+    events_consumed: [outline.create_story_node_from_heading]
+    ledger_entries: [planning]
+    audit_required_actions: [delete_story_node, major_reorder]
+
+  - object_name: Snapshot
+    object_type: entity
+    description: Restorable point-in-time checkpoint for project, document, source library, index, lexicon, export, or full workspace.
+    owner: user/system
+    lifecycle_states: [created, retained, restored, archived, deleted]
+    visibility_default: local_only
+    storage_location: vault
+    repo_safe: false
+    fields:
+      - name: snapshot_id
+        type: uuid
+        required: true
+        default: null
+        source: snapshot_service
+        validation: unique
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: snapshot_type
+        type: string
+        required: true
+        default: document
+        source: user/system
+        validation: project|document|source_library|analysis_index|lexicon|export|workspace
+        pii_or_sensitive: false
+        visibility: project
+        redaction_rule: none
+      - name: archive_ref
+        type: vault_ref
+        required: true
+        default: null
+        source: snapshot_service
+        validation: vault only
+        pii_or_sensitive: true
+        visibility: vault_only
+        redaction_rule: reference_only
+    relationships:
+      - related_object: Project
+        relationship_type: belongs_to
+        cardinality: many_to_one
+        required: true
+    events_created: [snapshot.created, rollback.previewed, rollback.completed]
+    events_consumed: [document.saved, source.imported, metadata.approved]
+    ledger_entries: [snapshot]
+    audit_required_actions: [rollback_restore, delete_snapshot]
+
+qual_quant_requirements:
+  qualitative_fields:
+    - title
+    - description
+    - summary
+    - prompt_text
+    - notes
+    - provenance
+  quantitative_fields:
+    - word_count
+    - heading_level
+    - confidence
+    - source_relevance_score
+    - metadata_confidence
+    - image_width
+    - image_height
+  derived_ai_labels:
+    - label: metadata proposal
+      source: metadata analyzer
+      confidence_required: true
+      user_correction_path: MetadataReviewPanel
+      marked_as_derived_not_truth: true
+    - label: section prompt
+      source: AI gateway / planning service
+      confidence_required: false
+      user_correction_path: SectionPromptPanel
+      marked_as_derived_not_truth: true
+    - label: source relevance
+      source: retrieval/analysis engine
+      confidence_required: true
+      user_correction_path: EvidenceDrawer
+      marked_as_derived_not_truth: true
+
+privacy_safety_security:
+  sensitive_classes:
+    - private_document_text
+    - private_source_text
+    - vault_path
+    - provider_secret
+    - generated_media_file
+  local_only_objects:
+    - Project
+    - Document
+    - SourceArtifact
+    - MediaAsset
+    - Snapshot
+  vault_only_objects:
+    - raw source text
+    - private document snapshots
+    - generated media files
+    - exports containing private content
+  redaction_rules:
+    - expose IDs and safe summaries in repo docs, not private content
+    - never store API keys in data model examples
+    - store full source/document content outside Git
+  prohibited_repo_content:
+    - vault contents
+    - source libraries
+    - model files
+    - embeddings
+    - generated private media
+    - secrets
+  consent_requirements:
+    - cloud AI use
+    - cloud image generation using private text
+    - destructive rollback
+    - rights migration
+
+rbac_visibility:
+  roles:
+    - owner
+    - editor_later
+    - viewer_later
+    - agent_limited
+  permission_domains:
+    - document_edit
+    - source_import
+    - metadata_approval
+    - rights_management
+    - provider_config
+    - export
+    - rollback
+  object_visibility_rules:
+    - local_only objects remain outside public repo
+    - vault_only content can be referenced by ID but not exposed
+  agent_permissions:
+    - agents may propose changes
+    - agents may not silently apply document rewrites
+    - agents may not silently change rights metadata
+    - agents may not send private content to cloud without policy approval
+
+validation_rules:
+  required_checks:
+    - all_objects_have_owner
+    - all_fields_have_type
+    - sensitive_fields_have_visibility
+    - local_or_vault_objects_are_not_repo_safe
+    - relationships_are_defined
+    - event_touchpoints_are_mapped
+    - audit_required_actions_are_listed
+  artifact_valid_when:
+    - every primary object is defined
+    - fields and relationships are explicit
+    - storage boundaries are clear
+    - qual_quant_needs are represented where relevant
+    - privacy and RBAC rules are mapped
+
+freshness_rules:
+  mark_stale_when:
+    - editor schema changes
+    - event taxonomy changes
+    - media model changes
+    - metadata lifecycle changes
+    - rights model changes
+    - storage strategy changes
+    - provider policy changes
+
+acceptance_criteria:
+  - MVP document objects are sufficient for document create/save/version, active outline, section prompts, source references, image insertion, metadata approval, rights defaults, snapshots, and event linkage.
+  - Private content is excluded from repo-safe examples.
+  - AI-derived labels are correctable by the user.
+  - Event touchpoints are mapped for all core objects.
+
+open_gaps:
+  - SourceArtifact full data model should be split into its own file.
+  - Media generation job model should be expanded before image provider implementation.
+  - ExportJob model should be expanded before DOCX/PDF support.
+  - Final editor engine may require additional node/range anchor fields.
