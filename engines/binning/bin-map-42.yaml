@@ -1,0 +1,181 @@
+engine: binning
+version: 1
+status: screen_scraper_initial
+model: 42_bins_plus_43_observer
+
+purpose: provide an initial reusable bin map for writing, source, media, metadata, rights, provider, export, and runtime events
+
+observer_layer:
+  id: 43
+  name: observer
+  purpose: detect unresolved state, contradictions, freshness drift, missing evidence, blocked actions, and cross-bin inconsistency
+
+bins:
+  - id: 01
+    key: document_structure
+    label: Document Structure
+    description: headings, sections, outline, TOC, document hierarchy
+  - id: 02
+    key: writing_flow
+    label: Writing Flow
+    description: prose drafting, continuation, rewrite, paragraph/section movement
+  - id: 03
+    key: review_comments
+    label: Review Comments
+    description: comments, suggestions, track-change-like review state
+  - id: 04
+    key: section_prompts
+    label: Section Prompts
+    description: active outline prompts, prompt staleness, prompt usage
+  - id: 05
+    key: story_spine
+    label: Story Spine
+    description: chapters, scenes, beats, storyboard cards, planning nodes
+  - id: 06
+    key: characters
+    label: Characters
+    description: characters, aliases, roles, continuity links
+  - id: 07
+    key: locations
+    label: Locations
+    description: places, settings, maps, location continuity
+  - id: 08
+    key: timeline_events
+    label: Timeline Events
+    description: chronology, causal chain, story events, history events
+  - id: 09
+    key: source_ingress
+    label: Source Ingress
+    description: imports, paste capture, uploaded source files, URL capture later
+  - id: 10
+    key: source_quality
+    label: Source Quality
+    description: provenance, reliability, source health, source confidence
+  - id: 11
+    key: retrieval_context
+    label: Retrieval Context
+    description: chunks, embeddings, source matches, evidence drawer payloads
+  - id: 12
+    key: citations_references
+    label: Citations and References
+    description: citation chips, source references, bibliography hooks
+  - id: 13
+    key: lexicon_terms
+    label: Lexicon Terms
+    description: glossary, aliases, domain terms, Rosetta mappings
+  - id: 14
+    key: semantic_blocks
+    label: Semantic Blocks
+    description: reusable blocks, [[blocks]], prompt blocks, image prompt blocks
+  - id: 15
+    key: tags
+    label: Tags
+    description: hashtags, labels, categorization, project-specific tags
+  - id: 16
+    key: metadata_review
+    label: Metadata Review
+    description: generated metadata, approval state, stale metadata
+  - id: 17
+    key: rights_license
+    label: Rights and License
+    description: author, date, license, rights holder, IP flags, migration
+  - id: 18
+    key: media_assets
+    label: Media Assets
+    description: uploaded, pasted, generated, imported media assets
+  - id: 19
+    key: image_layout
+    label: Image Layout
+    description: placement, anchoring, wrapping, caption, alt text, resize
+  - id: 20
+    key: image_generation
+    label: Image Generation
+    description: local/cloud/custom image generation jobs and prompts
+  - id: 21
+    key: page_layout
+    label: Page Layout
+    description: headers, footers, page numbers, background images, print preview
+  - id: 22
+    key: generated_elements
+    label: Generated Elements
+    description: TOC, glossary, figure list, source list, indexes
+  - id: 23
+    key: ai_gateway
+    label: AI Gateway
+    description: routing, provider selection, privacy modes, model roles
+  - id: 24
+    key: ollama_local
+    label: Ollama Local
+    description: local Ollama health, model list, model assignment
+  - id: 25
+    key: cloud_provider_boundary
+    label: Cloud Provider Boundary
+    description: user consent, cloud mode, provider privacy rules
+  - id: 26
+    key: context_budget
+    label: Context Budget
+    description: selection context, current section, retrieval packing, model limits
+  - id: 27
+    key: event_ledger
+    label: Event Ledger
+    description: append-only events, correlation, causation, audit trail
+  - id: 28
+    key: snapshots_rollback
+    label: Snapshots and Rollback
+    description: snapshots, restore previews, branch/copy restore
+  - id: 29
+    key: export_egress
+    label: Export Egress
+    description: markdown, docx, pdf, html, screenplay export jobs
+  - id: 30
+    key: document_health
+    label: Document Health
+    description: unresolved comments, stale prompts, missing metadata, readiness
+  - id: 31
+    key: accessibility
+    label: Accessibility
+    description: alt text, keyboard flow, headings, output accessibility warnings
+  - id: 32
+    key: privacy_security
+    label: Privacy and Security
+    description: secrets, vault boundaries, redaction, local/cloud permissions
+  - id: 33
+    key: rbac_visibility
+    label: RBAC and Visibility
+    description: role gates, hidden/visible states, future multi-user controls
+  - id: 34
+    key: runtime_health
+    label: Runtime Health
+    description: backend status, job queues, provider failures, local paths
+  - id: 35
+    key: local_vault
+    label: Local Vault
+    description: vault paths, runtime folders, storage boundaries, backup hints
+  - id: 36
+    key: repo_compliance
+    label: Repo Compliance
+    description: gitignore, safe files, xi-io template compliance, drift checks
+  - id: 37
+    key: user_preferences
+    label: User Preferences
+    description: editor preferences, AI modes, view settings, defaults
+  - id: 38
+    key: command_registry
+    label: Command Registry
+    description: menus, buttons, slash commands, BBCode commands, chat intents
+  - id: 39
+    key: ui_state
+    label: UI State
+    description: workspace modes, panels, split views, outlines, drawers
+  - id: 40
+    key: automation_jobs
+    label: Automation Jobs
+    description: queued jobs, AI tasks, import jobs, export jobs, retries
+  - id: 41
+    key: errors_diagnostics
+    label: Errors and Diagnostics
+    description: structured logs, error events, recovery suggestions
+  - id: 42
+    key: open_questions
+    label: Open Questions
+    description: unresolved planning, missing evidence, gaps, user decisions needed
