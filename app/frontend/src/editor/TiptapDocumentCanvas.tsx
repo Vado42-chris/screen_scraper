@@ -11,14 +11,31 @@ type TiptapDocumentCanvasProps = {
   onCursorContextChange?: (activeHeadingId: string | null, activeHeadingText: string | null) => void;
 };
 
+function slugifyHeading(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "") || "untitled-heading";
+}
+
+function getEditorRoot(documentId: string): HTMLElement | null {
+  return document.querySelector(`[data-document-id=\"${documentId}\"] .tiptapEditor`);
+}
+
 function extractHeadingAnchors(root: HTMLElement | null): HeadingAnchor[] {
   if (!root) return [];
+
   return Array.from(root.querySelectorAll("h1, h2, h3")).map((node, index) => {
     const element = node as HTMLHeadingElement;
     const level = Number(element.tagName.replace("H", "")) as 1 | 2 | 3;
     const text = element.textContent?.trim() || `Untitled heading ${index + 1}`;
+    const id = `${level}-${index}-${slugifyHeading(text)}`;
+
+    element.id = `heading-${id}`;
+    element.dataset.headingId = id;
+
     return {
-      id: `${level}-${index}-${text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
+      id,
       level,
       text,
     };
@@ -36,23 +53,25 @@ function findActiveHeading(root: HTMLElement | null): HeadingAnchor | null {
   while (current && current !== root) {
     if (current instanceof HTMLElement && /^H[1-3]$/.test(current.tagName)) {
       const headings = extractHeadingAnchors(root);
-      return headings.find((heading) => heading.text === current.textContent?.trim()) ?? null;
+      return headings.find((heading) => heading.id === current.dataset.headingId) ?? null;
     }
     current = current.parentNode;
   }
 
   const range = selection.getRangeAt(0);
-  const headings = Array.from(root.querySelectorAll("h1, h2, h3"));
+  const headingElements = Array.from(root.querySelectorAll("h1, h2, h3"));
   let active: HTMLHeadingElement | null = null;
-  for (const heading of headings) {
+
+  for (const heading of headingElements) {
     const headingRange = document.createRange();
     headingRange.selectNodeContents(heading);
     if (headingRange.compareBoundaryPoints(Range.START_TO_START, range) <= 0) {
       active = heading as HTMLHeadingElement;
     }
   }
+
   if (!active) return null;
-  return extractHeadingAnchors(root).find((heading) => heading.text === active?.textContent?.trim()) ?? null;
+  return extractHeadingAnchors(root).find((heading) => heading.id === active?.dataset.headingId) ?? null;
 }
 
 export function TiptapDocumentCanvas({
@@ -85,12 +104,12 @@ export function TiptapDocumentCanvas({
       },
     },
     onUpdate: ({ editor }) => {
-      const root = document.querySelector(`[data-document-id=\"${documentId}\"] .tiptapEditor`);
-      onChange(editor.getHTML(), editor.getText(), extractHeadingAnchors(root as HTMLElement | null));
+      const root = getEditorRoot(documentId);
+      onChange(editor.getHTML(), editor.getText(), extractHeadingAnchors(root));
     },
     onSelectionUpdate: () => {
-      const root = document.querySelector(`[data-document-id=\"${documentId}\"] .tiptapEditor`);
-      const activeHeading = findActiveHeading(root as HTMLElement | null);
+      const root = getEditorRoot(documentId);
+      const activeHeading = findActiveHeading(root);
       onCursorContextChange?.(activeHeading?.id ?? null, activeHeading?.text ?? null);
     },
   });
@@ -99,8 +118,8 @@ export function TiptapDocumentCanvas({
     if (!editor) return;
     if (editor.getHTML() !== content) {
       editor.commands.setContent(content || "", { emitUpdate: false });
-      const root = document.querySelector(`[data-document-id=\"${documentId}\"] .tiptapEditor`);
-      onChange(editor.getHTML(), editor.getText(), extractHeadingAnchors(root as HTMLElement | null));
+      const root = getEditorRoot(documentId);
+      onChange(editor.getHTML(), editor.getText(), extractHeadingAnchors(root));
     }
   }, [content, documentId, editor, onChange]);
 
