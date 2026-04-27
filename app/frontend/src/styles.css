@@ -198,8 +198,7 @@ dd {
   font-size: 0.9rem;
 }
 
-.eventItem,
-.snapshotItem {
+.eventItem {
   display: grid;
   gap: 4px;
   padding: 10px 12px;
@@ -208,38 +207,23 @@ dd {
   background: rgba(0, 0, 0, 0.14);
 }
 
-.snapshotItem {
-  border-color: rgba(253, 230, 138, 0.18);
-  background: rgba(180, 83, 9, 0.1);
-}
-
-.eventItem strong,
-.snapshotItem strong {
+.eventItem strong {
   color: #f3f1ec;
   font-size: 0.9rem;
   line-height: 1.35;
 }
 
-.snapshotItem strong {
-  color: #fef3c7;
-}
-
-.eventItem span,
-.snapshotItem span,
-.snapshotItem small {
+.eventItem span {
   color: #aaa49a;
   font-size: 0.78rem;
   line-height: 1.35;
 }
 
-.snapshotItem small {
-  color: #d6d3c7;
-}
-
 .button,
 .documentButton,
 .outlineButton,
-.sourceButton {
+.sourceButton,
+.snapshotButton {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -266,14 +250,16 @@ dd {
   padding: 11px 13px;
 }
 
-.button:disabled {
+.button:disabled,
+.snapshotButton:disabled {
   cursor: not-allowed;
   opacity: 0.65;
 }
 
 .documentButton,
 .outlineButton,
-.sourceButton {
+.sourceButton,
+.snapshotButton {
   width: 100%;
   flex-direction: column;
   align-items: flex-start;
@@ -284,19 +270,51 @@ dd {
   text-align: left;
 }
 
+.snapshotButton {
+  border: 1px solid rgba(253, 230, 138, 0.18);
+  background: rgba(180, 83, 9, 0.1);
+}
+
 .documentButton.active,
 .outlineButton:hover,
 .outlineButton:focus-visible,
 .sourceButton.active,
 .sourceButton:hover,
-.sourceButton:focus-visible {
+.sourceButton:focus-visible,
+.snapshotButton.active,
+.snapshotButton:hover,
+.snapshotButton:focus-visible {
   background: rgba(199, 192, 255, 0.2);
+}
+
+.snapshotButton.active,
+.snapshotButton:hover,
+.snapshotButton:focus-visible {
+  border-color: rgba(253, 230, 138, 0.38);
+  background: rgba(180, 83, 9, 0.2);
 }
 
 .documentButton small,
 .outlineButton small,
-.sourceButton small {
+.sourceButton small,
+.snapshotButton small {
   color: #aaa49a;
+}
+
+.snapshotButton strong {
+  color: #fef3c7;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.snapshotButton span {
+  color: #aaa49a;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.snapshotButton small {
+  color: #d6d3c7;
 }
 
 .sourceButton p {
@@ -363,7 +381,8 @@ dd {
 
 .sourceImportText,
 .sourcePreview textarea,
-.aiSuggestionPreview textarea {
+.aiSuggestionPreview textarea,
+.snapshotPreview textarea {
   width: 100%;
   min-height: 120px;
   padding: 12px;
@@ -374,6 +393,31 @@ dd {
   color: #f3f1ec;
   font-size: 0.92rem;
   line-height: 1.55;
+}
+
+.snapshotPreview {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(253, 230, 138, 0.2);
+  border-radius: 18px;
+  background: rgba(120, 53, 15, 0.14);
+}
+
+.snapshotPreview strong {
+  color: #fef3c7;
+}
+
+.snapshotPreview span {
+  color: #aaa49a;
+  font-size: 0.8rem;
+}
+
+.snapshotPreview textarea {
+  min-height: 220px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.84rem;
 }
 
 .aiSuggestionPreview {
