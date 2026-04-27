@@ -7,8 +7,9 @@ import type { HeadingAnchor } from "./types";
 type TiptapDocumentCanvasProps = {
   documentId: string;
   content: string;
-  onChange: (html: string, text: string, headings: HeadingAnchor[]) => void;
+  onChange: (html: string, text: string, markdown: string, headings: HeadingAnchor[]) => void;
   onCursorContextChange?: (activeHeadingId: string | null, activeHeadingText: string | null) => void;
+  onMarkdownExport?: (markdown: string) => void;
 };
 
 function slugifyHeading(text: string): string {
@@ -74,11 +75,74 @@ function findActiveHeading(root: HTMLElement | null): HeadingAnchor | null {
   return extractHeadingAnchors(root).find((heading) => heading.id === active?.dataset.headingId) ?? null;
 }
 
+function htmlToMarkdown(html: string): string {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+
+  function convertNode(node: Node): string {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return node.textContent ?? "";
+    }
+
+    if (!(node instanceof HTMLElement)) {
+      return "";
+    }
+
+    const childText = Array.from(node.childNodes).map(convertNode).join("");
+
+    switch (node.tagName.toLowerCase()) {
+      case "h1":
+        return `# ${childText.trim()}\n\n`;
+      case "h2":
+        return `## ${childText.trim()}\n\n`;
+      case "h3":
+        return `### ${childText.trim()}\n\n`;
+      case "p":
+        return `${childText.trim()}\n\n`;
+      case "strong":
+      case "b":
+        return `**${childText}**`;
+      case "em":
+      case "i":
+        return `*${childText}*`;
+      case "ul":
+        return `${Array.from(node.children).map(convertNode).join("")}\n`;
+      case "li":
+        return `- ${childText.trim()}\n`;
+      case "blockquote":
+        return `${childText
+          .trim()
+          .split("\n")
+          .map((line) => `> ${line}`)
+          .join("\n")}\n\n`;
+      default:
+        return childText;
+    }
+  }
+
+  return Array.from(doc.body.childNodes)
+    .map(convertNode)
+    .join("")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function emitChange(
+  documentId: string,
+  html: string,
+  text: string,
+  onChange: TiptapDocumentCanvasProps["onChange"],
+): void {
+  const root = getEditorRoot(documentId);
+  onChange(html, text, htmlToMarkdown(html), extractHeadingAnchors(root));
+}
+
 export function TiptapDocumentCanvas({
   documentId,
   content,
   onChange,
   onCursorContextChange,
+  onMarkdownExport,
 }: TiptapDocumentCanvasProps) {
   const extensions = useMemo(
     () => [
@@ -104,8 +168,7 @@ export function TiptapDocumentCanvas({
       },
     },
     onUpdate: ({ editor }) => {
-      const root = getEditorRoot(documentId);
-      onChange(editor.getHTML(), editor.getText(), extractHeadingAnchors(root));
+      emitChange(documentId, editor.getHTML(), editor.getText(), onChange);
     },
     onSelectionUpdate: () => {
       const root = getEditorRoot(documentId);
@@ -118,8 +181,7 @@ export function TiptapDocumentCanvas({
     if (!editor) return;
     if (editor.getHTML() !== content) {
       editor.commands.setContent(content || "", { emitUpdate: false });
-      const root = getEditorRoot(documentId);
-      onChange(editor.getHTML(), editor.getText(), extractHeadingAnchors(root));
+      emitChange(documentId, editor.getHTML(), editor.getText(), onChange);
     }
   }, [content, documentId, editor, onChange]);
 
@@ -147,6 +209,21 @@ export function TiptapDocumentCanvas({
         </button>
         <button type="button" onClick={() => editor.chain().focus().toggleBulletList().run()}>
           List
+        </button>
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().insertContent("<span data-source-ref=\"stub\">@source:stub</span>").run()}
+        >
+          @Source
+        </button>
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().insertContent("<p data-block-type=\"section-prompt\">[[prompt:section]]</p>").run()}
+        >
+          [[Prompt]]
+        </button>
+        <button type="button" onClick={() => onMarkdownExport?.(htmlToMarkdown(editor.getHTML()))}>
+          Export MD
         </button>
       </div>
       <EditorContent editor={editor} />
