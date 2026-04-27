@@ -98,6 +98,10 @@ function eventTitle(event: LedgerEvent): string {
       return `Checkpoint created: ${event.payload.note ?? event.payload.title ?? "snapshot"}`;
     case "snapshot.restore_previewed":
       return `Checkpoint previewed: ${event.payload.note ?? event.payload.title ?? "snapshot"}`;
+    case "snapshot.pre_restore_checkpoint_created":
+      return `Pre-restore checkpoint created: ${event.payload.note ?? event.payload.title ?? "snapshot"}`;
+    case "snapshot.restored":
+      return `Checkpoint restored: ${event.payload.note ?? event.payload.title ?? "snapshot"}`;
     case "source.imported":
       return `Source imported: ${event.payload.title ?? "Untitled Source"}`;
     case "source_reference.inserted":
@@ -146,6 +150,8 @@ function App() {
   const [sourceTitle, setSourceTitle] = useState("Untitled Source");
   const [sourceContent, setSourceContent] = useState("");
   const [snapshotNote, setSnapshotNote] = useState("Manual checkpoint");
+  const [restoreConfirming, setRestoreConfirming] = useState(false);
+  const [restoringSnapshot, setRestoringSnapshot] = useState(false);
   const [aiInstruction, setAiInstruction] = useState("Continue from the current section.");
   const [aiModel, setAiModel] = useState("");
   const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
@@ -219,6 +225,7 @@ function App() {
       setDraftContent(data.document.content);
       setSnapshots([]);
       setActiveSnapshot(null);
+      setRestoreConfirming(false);
       setHeadings([]);
       setActiveHeadingText(null);
       setMarkdownPreview("");
@@ -245,6 +252,7 @@ function App() {
       setDraftTitle(data.document.title);
       setDraftContent(data.document.content);
       setActiveSnapshot(null);
+      setRestoreConfirming(false);
       setHeadings([]);
       setActiveHeadingText(null);
       setMarkdownPreview("");
@@ -297,6 +305,7 @@ function App() {
       setNotice("Checkpoint created.");
       setSnapshotNote("Manual checkpoint");
       setActiveSnapshot(null);
+      setRestoreConfirming(false);
       await fetchSnapshots(activeDocument.document_id);
       await refreshStatus();
     } catch (err) {
@@ -315,12 +324,57 @@ function App() {
         method: "POST",
       }).then((response) => readJson<{ snapshot: SnapshotRecord; event_id: string }>(response));
       setActiveSnapshot(data.snapshot);
+      setRestoreConfirming(false);
       setNotice("Checkpoint preview loaded and recorded. Document was not changed.");
       await refreshStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load checkpoint preview.");
     } finally {
       setLoadingSnapshot(false);
+    }
+  }
+
+  async function restoreCheckpoint() {
+    if (!activeDocument || !activeSnapshot) {
+      setError("Preview a checkpoint before restoring.");
+      return;
+    }
+    setRestoringSnapshot(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const data = await fetch(`${API_BASE}/api/snapshots/${activeSnapshot.snapshot_id}/restore`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          document_id: activeDocument.document_id,
+          pre_restore_title: draftTitle,
+          pre_restore_content: draftContent,
+          confirmation: "RESTORE",
+        }),
+      }).then((response) =>
+        readJson<{
+          document: DocumentRecord;
+          pre_restore_snapshot: SnapshotSummary;
+          event_id: string;
+        }>(response),
+      );
+      setActiveDocument(data.document);
+      setDraftTitle(data.document.title);
+      setDraftContent(data.document.content);
+      setActiveSnapshot(null);
+      setRestoreConfirming(false);
+      setHeadings([]);
+      setActiveHeadingText(null);
+      setMarkdownPreview("");
+      setAiSuggestion(null);
+      setNotice("Checkpoint restored. A pre-restore checkpoint was created first.");
+      await fetchSnapshots(data.document.document_id);
+      await refreshStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not restore checkpoint.");
+    } finally {
+      setRestoringSnapshot(false);
     }
   }
 
@@ -677,7 +731,7 @@ function App() {
                           : "snapshotButton"
                       }
                       type="button"
-                      disabled={loadingSnapshot}
+                      disabled={loadingSnapshot || restoringSnapshot}
                       onClick={() => void previewCheckpoint(snapshot.snapshot_id)}
                     >
                       <strong>{snapshot.note}</strong>
@@ -695,6 +749,41 @@ function App() {
                 <span>{new Date(activeSnapshot.created_at).toLocaleString()}</span>
                 <p className="muted smallText">Preview only. The current document has not been changed.</p>
                 <textarea readOnly value={activeSnapshot.content} aria-label="Checkpoint content preview" />
+                {!restoreConfirming ? (
+                  <button
+                    className="button fullWidth dangerButton"
+                    type="button"
+                    disabled={restoringSnapshot}
+                    onClick={() => setRestoreConfirming(true)}
+                  >
+                    Restore This Checkpoint
+                  </button>
+                ) : (
+                  <section className="restoreConfirmPanel" aria-label="Restore confirmation">
+                    <strong>Confirm restore</strong>
+                    <p>
+                      This will replace the current document with the selected checkpoint. A new pre-restore checkpoint will be created first so this action can be reversed later.
+                    </p>
+                    <div className="restoreActions">
+                      <button
+                        className="button secondary fullWidth"
+                        type="button"
+                        disabled={restoringSnapshot}
+                        onClick={() => setRestoreConfirming(false)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="button fullWidth dangerButton"
+                        type="button"
+                        disabled={restoringSnapshot}
+                        onClick={() => void restoreCheckpoint()}
+                      >
+                        {restoringSnapshot ? "Restoring…" : "Confirm Restore"}
+                      </button>
+                    </div>
+                  </section>
+                )}
               </section>
             )}
           </div>
