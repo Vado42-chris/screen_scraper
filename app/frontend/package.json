@@ -9,6 +9,7 @@
     "preview": "vite preview --host 127.0.0.1 --port 4173"
   },
   "dependencies": {
+    "@tiptap/core": "latest",
     "@tiptap/extension-placeholder": "latest",
     "@tiptap/react": "latest",
     "@tiptap/starter-kit": "latest",
