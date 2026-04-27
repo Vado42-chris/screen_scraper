@@ -6,12 +6,19 @@ import { SectionPromptBlock } from "./extensions/SectionPromptBlock";
 import { SourceReferenceChip } from "./extensions/SourceReferenceChip";
 import type { HeadingAnchor } from "./types";
 
+type ActiveSourceRef = {
+  source_id: string;
+  title: string;
+};
+
 type TiptapDocumentCanvasProps = {
   documentId: string;
   content: string;
+  selectedSource?: ActiveSourceRef | null;
   onChange: (html: string, text: string, markdown: string, headings: HeadingAnchor[]) => void;
   onCursorContextChange?: (activeHeadingId: string | null, activeHeadingText: string | null) => void;
   onMarkdownExport?: (markdown: string) => void;
+  onSourceReferenceInserted?: (sourceId: string, label: string) => void;
 };
 
 function slugifyHeading(text: string): string {
@@ -150,9 +157,11 @@ function emitChange(
 export function TiptapDocumentCanvas({
   documentId,
   content,
+  selectedSource,
   onChange,
   onCursorContextChange,
   onMarkdownExport,
+  onSourceReferenceInserted,
 }: TiptapDocumentCanvasProps) {
   const extensions = useMemo(
     () => [
@@ -201,6 +210,17 @@ export function TiptapDocumentCanvas({
     return <div className="editorLoading">Loading editor…</div>;
   }
 
+  const insertSelectedSource = () => {
+    const sourceId = selectedSource?.source_id ?? "stub";
+    const label = selectedSource ? `@${selectedSource.title}` : "@source:stub";
+    editor
+      .chain()
+      .focus()
+      .insertContent({ type: "sourceReferenceChip", attrs: { sourceId, label } })
+      .run();
+    onSourceReferenceInserted?.(sourceId, label);
+  };
+
   return (
     <div className="editorSurface" data-document-id={documentId}>
       <div className="editorToolbar" aria-label="Document formatting">
@@ -222,17 +242,8 @@ export function TiptapDocumentCanvas({
         <button type="button" onClick={() => editor.chain().focus().toggleBulletList().run()}>
           List
         </button>
-        <button
-          type="button"
-          onClick={() =>
-            editor
-              .chain()
-              .focus()
-              .insertContent({ type: "sourceReferenceChip", attrs: { sourceId: "stub", label: "@source:stub" } })
-              .run()
-          }
-        >
-          @Source
+        <button type="button" onClick={insertSelectedSource}>
+          {selectedSource ? `@${selectedSource.title}` : "@Source"}
         </button>
         <button
           type="button"
