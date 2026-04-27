@@ -8,6 +8,7 @@ from app.config import Settings, get_settings
 from app.services.document_service import DocumentService
 from app.services.event_ledger import EventLedgerService
 from app.services.ollama_provider import OllamaProviderService, OllamaStatus
+from app.services.source_library_service import SourceLibraryService
 
 app = FastAPI(title="screen_scraper backend", version="0.1.0")
 
@@ -30,12 +31,22 @@ class DocumentUpdateRequest(BaseModel):
     content: str = ""
 
 
+class SourceCreateRequest(BaseModel):
+    title: str = Field(default="Untitled Source", max_length=240)
+    source_type: str = Field(default="paste", max_length=80)
+    content: str = Field(default="", min_length=1)
+
+
 def get_ledger(settings: Settings = Depends(get_settings)) -> EventLedgerService:
     return EventLedgerService(settings.sqlite_path)
 
 
 def get_documents(settings: Settings = Depends(get_settings)) -> DocumentService:
     return DocumentService(settings.sqlite_path)
+
+
+def get_sources(settings: Settings = Depends(get_settings)) -> SourceLibraryService:
+    return SourceLibraryService(settings.sqlite_path)
 
 
 @app.on_event("startup")
@@ -152,3 +163,47 @@ def update_document(
         payload={"title": document.title},
     )
     return {"document": documents.to_dict(document)}
+
+
+@app.get("/api/sources")
+def list_sources(
+    q: str = "",
+    sources: SourceLibraryService = Depends(get_sources),
+) -> dict[str, object]:
+    return {"sources": sources.search(q) if q else sources.list()}
+
+
+@app.post("/api/sources")
+def create_source(
+    request: SourceCreateRequest,
+    sources: SourceLibraryService = Depends(get_sources),
+    ledger: EventLedgerService = Depends(get_ledger),
+) -> dict[str, object]:
+    source = sources.create(
+        title=request.title,
+        source_type=request.source_type,
+        content=request.content,
+    )
+    ledger.append(
+        event_type="source.imported",
+        actor_type="user",
+        target_type="source",
+        target_id=source.source_id,
+        payload={
+            "title": source.title,
+            "source_type": source.source_type,
+            "word_count": len(source.content.split()),
+        },
+    )
+    return {"source": sources.to_dict(source)}
+
+
+@app.get("/api/sources/{source_id}")
+def get_source(
+    source_id: str,
+    sources: SourceLibraryService = Depends(get_sources),
+) -> dict[str, object]:
+    source = sources.get(source_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Source not found.")
+    return {"source": sources.to_dict(source)}
