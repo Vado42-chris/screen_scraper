@@ -14,12 +14,19 @@ export type CursorContext = {
 export type EditorSnapshot = {
   html: string;
   text: string;
+  markdown: string;
   headings: HeadingAnchor[];
+};
+
+export type EditorCommand = {
+  insertHeading: (level: 1 | 2 | 3) => void;
+  insertSourceReferenceStub: () => void;
+  insertSectionPromptStub: () => void;
+  exportMarkdown: () => string;
 };
 
 export type EditorAdapter = {
   getSnapshot: () => EditorSnapshot;
   getCursorContext: (documentId: string) => CursorContext;
-  insertHeading: (level: 1 | 2 | 3) => void;
-  exportMarkdown: () => string;
+  commands: EditorCommand;
 };
