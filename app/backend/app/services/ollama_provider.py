@@ -17,11 +17,19 @@ class OllamaStatus(BaseModel):
     models: list[OllamaModel] = []
 
 
+class OllamaGenerationResult(BaseModel):
+    ok: bool
+    base_url: str
+    model: str
+    message: str
+    response: str = ""
+
+
 class OllamaProviderService:
     """Local Ollama provider adapter.
 
     The frontend must never call Ollama directly. This service is the backend
-    boundary for provider health and model discovery.
+    boundary for provider health, model discovery, and local text generation.
     """
 
     def __init__(self, base_url: str) -> None:
@@ -54,4 +62,36 @@ class OllamaProviderService:
             base_url=self.base_url,
             message="Ollama is reachable.",
             models=models,
+        )
+
+    async def generate(self, *, model: str, prompt: str) -> OllamaGenerationResult:
+        """Generate text with Ollama through the backend boundary.
+
+        This returns text only. Document mutation is intentionally handled by the
+        frontend/editor review path later, not by this provider service.
+        """
+
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                response = await client.post(
+                    f"{self.base_url}/api/generate",
+                    json={"model": model, "prompt": prompt, "stream": False},
+                )
+                response.raise_for_status()
+        except httpx.HTTPError as exc:
+            return OllamaGenerationResult(
+                ok=False,
+                base_url=self.base_url,
+                model=model,
+                message=f"Ollama generation failed: {exc.__class__.__name__}",
+                response="",
+            )
+
+        data = response.json()
+        return OllamaGenerationResult(
+            ok=True,
+            base_url=self.base_url,
+            model=model,
+            message="Ollama generation completed.",
+            response=data.get("response", ""),
         )
