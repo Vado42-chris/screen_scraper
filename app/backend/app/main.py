@@ -59,6 +59,13 @@ class AIContinueRequest(BaseModel):
     context_markdown: str = Field(default="", max_length=12000)
 
 
+class AISuggestionInsertedRequest(BaseModel):
+    document_id: str = Field(min_length=1)
+    model: str = Field(min_length=1, max_length=160)
+    suggestion_chars: int = Field(ge=0)
+    active_heading: str | None = Field(default=None, max_length=240)
+
+
 def get_ledger(settings: Settings = Depends(get_settings)) -> EventLedgerService:
     return EventLedgerService(settings.sqlite_path)
 
@@ -355,3 +362,27 @@ async def continue_with_ai(
         "model": result.model,
         "suggestion": result.response,
     }
+
+
+@app.post("/api/ai/suggestion-inserted")
+def record_ai_suggestion_inserted(
+    request: AISuggestionInsertedRequest,
+    documents: DocumentService = Depends(get_documents),
+    ledger: EventLedgerService = Depends(get_ledger),
+) -> dict[str, object]:
+    document = documents.get(request.document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found.")
+
+    event = ledger.append(
+        event_type="ai_suggestion.inserted",
+        actor_type="user",
+        target_type="document",
+        target_id=request.document_id,
+        payload={
+            "model": request.model,
+            "suggestion_chars": request.suggestion_chars,
+            "active_heading": request.active_heading,
+        },
+    )
+    return {"ok": True, "event_id": event.event_id}
