@@ -60,6 +60,12 @@ type LedgerEvent = {
   payload: LedgerPayload;
 };
 
+type AISuggestion = {
+  model: string;
+  message: string;
+  suggestion: string;
+};
+
 const API_BASE = "http://127.0.0.1:8000";
 
 async function readJson<T>(response: Response): Promise<T> {
@@ -81,6 +87,12 @@ function eventTitle(event: LedgerEvent): string {
       return `Source reference inserted: ${event.payload.label ?? event.payload.source_title ?? "source"}`;
     case "section_prompt.created":
       return `Section prompt created: ${event.payload.label ?? "section prompt"}`;
+    case "ai.requested":
+      return `AI requested: ${event.payload.action ?? "writing assist"}`;
+    case "ai.completed":
+      return `AI suggestion ready: ${event.payload.suggestion_chars ?? 0} chars`;
+    case "ai.failed":
+      return `AI failed: ${event.payload.message ?? "provider error"}`;
     case "ollama.health_checked":
       return `Ollama checked: ${event.payload.model_count ?? 0} model(s)`;
     case "ollama.models_listed":
@@ -112,12 +124,16 @@ function App() {
   const [sourceSearch, setSourceSearch] = useState("");
   const [sourceTitle, setSourceTitle] = useState("Untitled Source");
   const [sourceContent, setSourceContent] = useState("");
+  const [aiInstruction, setAiInstruction] = useState("Continue from the current section.");
+  const [aiModel, setAiModel] = useState("");
+  const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
   const [headings, setHeadings] = useState<HeadingAnchor[]>([]);
   const [activeHeadingText, setActiveHeadingText] = useState<string | null>(null);
   const [markdownPreview, setMarkdownPreview] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [importingSource, setImportingSource] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -144,6 +160,9 @@ function App() {
       setDocuments(documentData.documents);
       setSources(sourceData.sources);
       setEvents(eventData.events);
+      if (!aiModel && ollamaData.models.length > 0) {
+        setAiModel(ollamaData.models[0].name);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown status error.");
     } finally {
@@ -167,6 +186,7 @@ function App() {
       setHeadings([]);
       setActiveHeadingText(null);
       setMarkdownPreview("");
+      setAiSuggestion(null);
       setNotice("Document created.");
       await refreshStatus();
     } catch (err) {
@@ -190,6 +210,7 @@ function App() {
       setHeadings([]);
       setActiveHeadingText(null);
       setMarkdownPreview("");
+      setAiSuggestion(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not open document.");
     } finally {
@@ -295,6 +316,42 @@ function App() {
       await refreshStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Section prompt was inserted, but not recorded.");
+    }
+  }
+
+  async function requestAIContinue() {
+    if (!activeDocument) {
+      setError("Open a document before asking AI to continue.");
+      return;
+    }
+    if (!aiModel) {
+      setError("Select an Ollama model before asking AI to continue.");
+      return;
+    }
+    setAiLoading(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const data = await fetch(`${API_BASE}/api/ai/continue`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          document_id: activeDocument.document_id,
+          model: aiModel,
+          instruction: aiInstruction,
+          active_heading: activeHeadingText,
+          context_markdown: markdownPreview,
+        }),
+      }).then((response) =>
+        readJson<{ ok: boolean; message: string; model: string; suggestion: string }>(response),
+      );
+      setAiSuggestion({ model: data.model, message: data.message, suggestion: data.suggestion });
+      setNotice(data.ok ? "AI suggestion ready for review." : data.message);
+      await refreshStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "AI suggestion request failed.");
+    } finally {
+      setAiLoading(false);
     }
   }
 
@@ -437,6 +494,49 @@ function App() {
 
         <aside className="panel" aria-label="Sources, runtime, activity, and export status">
           <div className="panelHeader">
+            <Sparkles size={20} />
+            <h2>AI Suggestion</h2>
+          </div>
+          <div className="aiAssistPanel">
+            <select
+              className="compactInput"
+              aria-label="AI model"
+              value={aiModel}
+              onChange={(event) => setAiModel(event.target.value)}
+            >
+              <option value="">Select model</option>
+              {ollama?.models.map((model) => (
+                <option key={model.name} value={model.name}>
+                  {model.name}
+                </option>
+              ))}
+            </select>
+            <textarea
+              className="sourceImportText"
+              aria-label="AI instruction"
+              value={aiInstruction}
+              onChange={(event) => setAiInstruction(event.target.value)}
+            />
+            <button
+              className="button fullWidth"
+              type="button"
+              disabled={aiLoading || !activeDocument || !aiModel}
+              onClick={() => void requestAIContinue()}
+            >
+              {aiLoading ? "Thinking…" : "Ask AI to Continue"}
+            </button>
+            {aiSuggestion && (
+              <section className="aiSuggestionPreview" aria-label="AI suggestion preview">
+                <strong>Suggestion from {aiSuggestion.model}</strong>
+                <p className="muted smallText">Review only. Nothing is applied to the document automatically.</p>
+                <textarea readOnly value={aiSuggestion.suggestion} aria-label="AI suggestion text" />
+              </section>
+            )}
+          </div>
+
+          <div className="divider" />
+
+          <div className="panelHeader compact">
             <Search size={20} />
             <h2>Sources</h2>
           </div>
