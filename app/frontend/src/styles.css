@@ -176,7 +176,8 @@ dd {
 .documentList,
 .outlineList,
 .sourceList,
-.eventList {
+.eventList,
+.snapshotList {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -197,7 +198,8 @@ dd {
   font-size: 0.9rem;
 }
 
-.eventItem {
+.eventItem,
+.snapshotItem {
   display: grid;
   gap: 4px;
   padding: 10px 12px;
@@ -206,16 +208,32 @@ dd {
   background: rgba(0, 0, 0, 0.14);
 }
 
-.eventItem strong {
+.snapshotItem {
+  border-color: rgba(253, 230, 138, 0.18);
+  background: rgba(180, 83, 9, 0.1);
+}
+
+.eventItem strong,
+.snapshotItem strong {
   color: #f3f1ec;
   font-size: 0.9rem;
   line-height: 1.35;
 }
 
-.eventItem span {
+.snapshotItem strong {
+  color: #fef3c7;
+}
+
+.eventItem span,
+.snapshotItem span,
+.snapshotItem small {
   color: #aaa49a;
   font-size: 0.78rem;
   line-height: 1.35;
+}
+
+.snapshotItem small {
+  color: #d6d3c7;
 }
 
 .button,
@@ -324,10 +342,23 @@ dd {
 }
 
 .sourceImportForm,
-.aiAssistPanel {
+.aiAssistPanel,
+.checkpointPanel {
   display: grid;
   gap: 10px;
   margin-bottom: 14px;
+}
+
+.checkpointPanel {
+  padding: 12px;
+  border: 1px solid rgba(253, 230, 138, 0.12);
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.checkpointPanel .button {
+  background: #fef3c7;
+  color: #1f1b12;
 }
 
 .sourceImportText,
