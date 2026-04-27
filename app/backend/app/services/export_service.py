@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import base64
 import html
+import io
 import json
 import re
 import uuid
+import zipfile
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from typing import Any, Protocol
@@ -12,7 +15,7 @@ from app.services.document_service import DocumentRecord
 from app.services.event_ledger import EventLedgerService
 
 
-SUPPORTED_FORMATS = {"md", "html", "txt", "json"}
+SUPPORTED_FORMATS = {"md", "html", "txt", "json", "zip"}
 DEFAULT_PRODUCT_ID = "screen_scraper"
 DEFAULT_ADAPTER_VERSION = "v1"
 
@@ -60,6 +63,7 @@ class ExportArtifact:
     content: str
     content_type: str
     content_chars: int
+    content_encoding: str = "utf-8"
 
 
 @dataclass(frozen=True)
@@ -185,6 +189,27 @@ def safe_slug(value: str) -> str:
     return slug or "untitled-document"
 
 
+def build_manifest(package: DocumentEgressPackage, artifact_count: int, export_format: str) -> dict[str, Any]:
+    return {
+        "manifest_version": 1,
+        "export_id": package.export_id,
+        "product_id": package.product_id,
+        "project_id": package.project_id,
+        "source_product": DEFAULT_PRODUCT_ID,
+        "created_at": package.created_at,
+        "export_profile": package.profile,
+        "format": export_format,
+        "adapter_version": package.adapter_version,
+        "artifact_count": artifact_count,
+        "document_type": package.document_type,
+        "source_reference_count": package.source_reference_count,
+        "lexicon_term_count": package.lexicon_term_count,
+        "media_item_count": package.media_item_count,
+        "warning_count": package.warning_count,
+        "warnings": package.warnings,
+    }
+
+
 class ExportPackageBuilder:
     def build(self, *, document: DocumentRecord, request: ExportRequest) -> DocumentEgressPackage:
         export_id = str(uuid.uuid4())
@@ -280,6 +305,38 @@ class JsonExportAdapter:
         )
 
 
+class ZipExportAdapter:
+    format = "zip"
+
+    def export(self, package: DocumentEgressPackage) -> ExportArtifact:
+        base_name = safe_slug(package.artifact_title)
+        manifest = build_manifest(package=package, artifact_count=4, export_format=self.format)
+        html_content = build_standalone_html_document(package)
+        package_content = json.dumps(asdict(package), indent=2, sort_keys=True)
+        manifest_content = json.dumps(manifest, indent=2, sort_keys=True)
+
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("manifest.json", manifest_content)
+            archive.writestr(f"{base_name}.md", package.markdown_body)
+            archive.writestr(f"{base_name}.html", html_content)
+            archive.writestr(f"{base_name}.txt", package.plain_text_body.strip() + "\n")
+            archive.writestr(f"{base_name}.package.json", package_content)
+
+        zip_bytes = buffer.getvalue()
+        encoded = base64.b64encode(zip_bytes).decode("ascii")
+        return ExportArtifact(
+            artifact_id=str(uuid.uuid4()),
+            export_id=package.export_id,
+            filename=f"{base_name}.zip",
+            format=self.format,
+            content=encoded,
+            content_type="application/zip",
+            content_chars=len(zip_bytes),
+            content_encoding="base64",
+        )
+
+
 class ExportService:
     def __init__(self, ledger: EventLedgerService) -> None:
         self.ledger = ledger
@@ -289,6 +346,7 @@ class ExportService:
             "html": HtmlExportAdapter(),
             "txt": PlainTextExportAdapter(),
             "json": JsonExportAdapter(),
+            "zip": ZipExportAdapter(),
         }
 
     def export_document(self, *, document: DocumentRecord, request: ExportRequest) -> ExportResult:
@@ -365,6 +423,28 @@ class ExportService:
             )
             raise
 
+        if artifact.format == "zip":
+            self.ledger.append(
+                event_type="export.bundle_created",
+                actor_type="system",
+                target_type="document",
+                target_id=document.document_id,
+                payload={
+                    "export_id": package.export_id,
+                    "product_id": package.product_id,
+                    "project_id": package.project_id,
+                    "document_id": package.document_id,
+                    "artifact_id": artifact.artifact_id,
+                    "document_type": package.document_type,
+                    "format": artifact.format,
+                    "profile": package.profile,
+                    "adapter_version": package.adapter_version,
+                    "artifact_count": manifest["artifact_count"],
+                    "content_chars": artifact.content_chars,
+                    "warning_count": package.warning_count,
+                },
+            )
+
         self.ledger.append(
             event_type="export.completed",
             actor_type="system",
@@ -380,7 +460,7 @@ class ExportService:
                 "format": artifact.format,
                 "profile": package.profile,
                 "adapter_version": package.adapter_version,
-                "artifact_count": 1,
+                "artifact_count": manifest["artifact_count"],
                 "content_chars": artifact.content_chars,
                 "source_reference_count": package.source_reference_count,
                 "lexicon_term_count": package.lexicon_term_count,
@@ -394,21 +474,5 @@ class ExportService:
         return ExportResult(export_id=package.export_id, artifact=artifact, manifest=manifest)
 
     def _build_manifest(self, *, package: DocumentEgressPackage, artifact: ExportArtifact) -> dict[str, Any]:
-        return {
-            "manifest_version": 1,
-            "export_id": package.export_id,
-            "product_id": package.product_id,
-            "project_id": package.project_id,
-            "source_product": DEFAULT_PRODUCT_ID,
-            "created_at": package.created_at,
-            "export_profile": package.profile,
-            "format": artifact.format,
-            "adapter_version": package.adapter_version,
-            "artifact_count": 1,
-            "document_type": package.document_type,
-            "source_reference_count": package.source_reference_count,
-            "lexicon_term_count": package.lexicon_term_count,
-            "media_item_count": package.media_item_count,
-            "warning_count": package.warning_count,
-            "warnings": package.warnings,
-        }
+        artifact_count = 5 if artifact.format == "zip" else 1
+        return build_manifest(package=package, artifact_count=artifact_count, export_format=artifact.format)
