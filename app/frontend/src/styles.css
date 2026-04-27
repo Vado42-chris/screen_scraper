@@ -27,7 +27,8 @@ textarea {
 
 button:focus-visible,
 input:focus-visible,
-textarea:focus-visible {
+textarea:focus-visible,
+.tiptapEditor:focus-visible {
   outline: 3px solid rgba(199, 192, 255, 0.65);
   outline-offset: 2px;
 }
@@ -170,7 +171,8 @@ dd {
 }
 
 .modelList,
-.documentList {
+.documentList,
+.outlineList {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -238,6 +240,29 @@ dd {
   color: #aaa49a;
 }
 
+.outlineItem {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.045);
+  color: #f3f1ec;
+}
+
+.outlineItem small {
+  color: #aaa49a;
+}
+
+.outlineItem.level2 {
+  margin-left: 14px;
+}
+
+.outlineItem.level3 {
+  margin-left: 28px;
+}
+
 .titleInput {
   width: min(100%, 620px);
   padding: 12px 14px;
@@ -249,19 +274,80 @@ dd {
   font-weight: 700;
 }
 
-.plainEditor {
+.editorSurface {
+  display: flex;
   flex: 1;
-  min-height: 52vh;
-  width: 100%;
-  padding: 28px;
+  min-height: 54vh;
+  flex-direction: column;
+  overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 22px;
-  resize: vertical;
   background: rgba(250, 247, 239, 0.94);
   color: #191a1f;
+}
+
+.editorToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.editorToolbar button {
+  padding: 7px 10px;
+  border: 1px solid rgba(25, 26, 31, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  color: #191a1f;
+  cursor: pointer;
+}
+
+.tiptapEditor {
+  min-height: 48vh;
+  padding: 32px;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.12rem;
+  font-size: 1.13rem;
   line-height: 1.75;
+}
+
+.tiptapEditor :first-child {
+  margin-top: 0;
+}
+
+.tiptapEditor h1,
+.tiptapEditor h2,
+.tiptapEditor h3 {
+  letter-spacing: normal;
+  line-height: 1.15;
+}
+
+.tiptapEditor h1 {
+  font-size: 2.1rem;
+}
+
+.tiptapEditor h2 {
+  font-size: 1.65rem;
+}
+
+.tiptapEditor h3 {
+  font-size: 1.3rem;
+}
+
+.tiptapEditor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: rgba(25, 26, 31, 0.46);
+  pointer-events: none;
+}
+
+.editorLoading {
+  padding: 28px;
+  border-radius: 22px;
+  background: rgba(250, 247, 239, 0.94);
+  color: #191a1f;
 }
 
 .emptyState {
@@ -299,7 +385,8 @@ dd {
     min-height: auto;
   }
 
-  .plainEditor {
+  .editorSurface,
+  .tiptapEditor {
     min-height: 420px;
   }
 }
@@ -318,6 +405,10 @@ dd {
 
   dl {
     grid-template-columns: 1fr;
+  }
+
+  .tiptapEditor {
+    padding: 22px;
   }
 
   .statusToast {
