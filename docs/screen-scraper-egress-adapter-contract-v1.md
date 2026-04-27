@@ -10,7 +10,12 @@ Framework source of truth:
 
 ```text
 xi-io.net/docs/framework/egress-engine-standard-v1.md
-xi-io.net/docs/framework/templates/product-egress-adapter-contract-template-v1.md
+```
+
+Framework product adapter template:
+
+```text
+xi-io.net/docs/framework/templates/product-egress-adapter-template-v1.md
 ```
 
 ## Product identity
@@ -21,6 +26,7 @@ display_name: screen_scraper
 repo: Vado42-chris/screen_scraper
 adapter_version: v1
 framework_standard: xi-io Framework Egress Engine Standard v1
+framework_template: Product Egress Adapter Template v1
 canonical_package_type: DocumentEgressPackage
 ```
 
@@ -28,7 +34,29 @@ canonical_package_type: DocumentEgressPackage
 
 `screen_scraper` provides a writer/document implementation of the framework egress system.
 
-The product adapter maps local writer documents, source chips, section prompt blocks, AI suggestion metadata, checkpoints, lexicon terms, media metadata, rights metadata, and export warnings into a framework-compatible `DocumentEgressPackage`.
+The xi-io framework owns the reusable egress classes, document type variables, export formats, export profiles, event rules, manifest rules, safety gates, and UI component expectations.
+
+This product adapter owns only the mapping from local `screen_scraper` objects into the framework-compatible `DocumentEgressPackage`.
+
+## Framework versus product boundary
+
+```text
+xi-io.net framework
+  owns reusable white-label egress/export structure
+  owns shared document type options
+  owns shared format/profile vocabulary
+  owns shared UI component contracts
+  owns shared event and safety rules
+
+screen_scraper adapter
+  owns writer/document defaults
+  owns local object mapping
+  owns local ExportService implementation
+  owns product-specific warnings
+  owns product-specific UI placement
+```
+
+If this document conflicts with the framework standard, the framework standard wins.
 
 ## Supported egress classes
 
@@ -36,10 +64,14 @@ MVP target:
 
 ```text
 document_export
-source_library_update
-metadata_update
 snapshot_create
 rollback_restore
+```
+
+Related runtime actions already present:
+
+```text
+source_library_update
 provider_call
 ```
 
@@ -48,6 +80,7 @@ Later target:
 ```text
 document_patch
 document_generate
+metadata_update
 rights_update
 media_asset_update
 data_export
@@ -82,6 +115,8 @@ character_sheet
 location_sheet
 lore_entry
 ```
+
+This is intentionally a subset of the xi-io framework document type list.
 
 ## Supported export formats
 
@@ -148,6 +183,7 @@ Operations Package
 | canonical_body | Tiptap/ProseMirror document model | future canonical model |
 | html_body | `DocumentRecord.content` | current persistence format |
 | markdown_body | editor Markdown export path | currently preview-only |
+| plain_text_body | future ExportPackageBuilder extraction | planned |
 | author | project/document metadata | future |
 | license_status | project/document metadata | future |
 | rights_status | project/document metadata | future |
@@ -186,6 +222,7 @@ MVP target:
 local_download
 local_project_exports_directory
 product_runtime_storage
+local_preview_only
 ```
 
 Later target:
@@ -196,6 +233,15 @@ local_network_share
 GitHub release artifact
 deployment_staging_directory
 external_provider
+```
+
+Forbidden by default:
+
+```text
+silent_cloud_upload
+silent_public_publish
+unconfirmed_repo_write
+unmanaged_absolute_path
 ```
 
 Any publish/deploy/provider target requires a framework approval gate.
@@ -223,6 +269,18 @@ Any publish/deploy/provider target requires a framework approval gate.
 | download/open artifact | export.downloaded | export_id, artifact_id, format |
 | generic egress request | egress.requested | egress_id, action_type, target_type |
 | generic egress complete | egress.completed | egress_id, ok, message |
+
+Additional already-implemented adjacent events:
+
+```text
+snapshot.created
+snapshot.restore_previewed
+snapshot.pre_restore_checkpoint_created
+snapshot.restored
+ai_suggestion.inserted
+source_reference.inserted
+section_prompt.created
+```
 
 ## Allowed event payload fields
 
@@ -293,6 +351,7 @@ right panel export card may be used as interim surface
 Reusable framework components expected:
 
 ```text
+EgressActionCard
 ExportProfileSelector
 ExportFormatSelector
 DocumentTypeSelector
@@ -326,6 +385,26 @@ EpubExportAdapter
 
 The frontend should not build final export files directly except for temporary preview-only Markdown display.
 
+## Relationship to local export plan
+
+The local document:
+
+```text
+docs/export-egress-contract-v1.md
+```
+
+is the `screen_scraper` product-specific final artifact export plan. It must conform to this adapter contract and the xi-io framework standard.
+
+Precedence order:
+
+```text
+1. xi-io.net framework egress standard
+2. xi-io.net product egress adapter template
+3. screen_scraper egress adapter contract
+4. screen_scraper export-egress contract
+5. implementation details
+```
+
 ## Verification requirements
 
 Minimum tests:
@@ -344,6 +423,7 @@ failed export returns visible failed state
 
 ```text
 [x] framework standard referenced
+[x] framework adapter template referenced
 [x] product adapter contract created
 [ ] product egress config reconciled
 [ ] product egress schema reconciled
