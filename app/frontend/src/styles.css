@@ -173,7 +173,8 @@ dd {
 .modelList,
 .documentList,
 .outlineList,
-.sourceList {
+.sourceList,
+.eventList {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -192,6 +193,27 @@ dd {
   background: rgba(255, 255, 255, 0.08);
   color: #ebe7df;
   font-size: 0.9rem;
+}
+
+.eventItem {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.eventItem strong {
+  color: #f3f1ec;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.eventItem span {
+  color: #aaa49a;
+  font-size: 0.78rem;
+  line-height: 1.35;
 }
 
 .button,
