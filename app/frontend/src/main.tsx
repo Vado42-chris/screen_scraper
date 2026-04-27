@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { FileText, RefreshCw, Save, Server, Sparkles } from "lucide-react";
+import { FileText, RefreshCw, Save, Search, Server, Sparkles } from "lucide-react";
 import { TiptapDocumentCanvas } from "./editor/TiptapDocumentCanvas";
 import type { HeadingAnchor } from "./editor/types";
 import "./styles.css";
@@ -35,6 +35,19 @@ type DocumentRecord = DocumentSummary & {
   content: string;
 };
 
+type SourceSummary = {
+  source_id: string;
+  title: string;
+  source_type: string;
+  snippet: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type SourceRecord = SourceSummary & {
+  content: string;
+};
+
 const API_BASE = "http://127.0.0.1:8000";
 
 async function readJson<T>(response: Response): Promise<T> {
@@ -48,31 +61,42 @@ function App() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [ollama, setOllama] = useState<OllamaStatus | null>(null);
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
+  const [sources, setSources] = useState<SourceSummary[]>([]);
   const [activeDocument, setActiveDocument] = useState<DocumentRecord | null>(null);
+  const [activeSource, setActiveSource] = useState<SourceRecord | null>(null);
   const [draftTitle, setDraftTitle] = useState("");
   const [draftContent, setDraftContent] = useState("");
+  const [sourceSearch, setSourceSearch] = useState("");
+  const [sourceTitle, setSourceTitle] = useState("Untitled Source");
+  const [sourceContent, setSourceContent] = useState("");
   const [headings, setHeadings] = useState<HeadingAnchor[]>([]);
   const [activeHeadingText, setActiveHeadingText] = useState<string | null>(null);
   const [markdownPreview, setMarkdownPreview] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [importingSource, setImportingSource] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  async function refreshStatus() {
+  async function refreshStatus(query = sourceSearch) {
     setLoading(true);
     setError(null);
     try {
-      const [healthData, ollamaData, documentData] = await Promise.all([
+      const sourceUrl = query.trim()
+        ? `${API_BASE}/api/sources?q=${encodeURIComponent(query.trim())}`
+        : `${API_BASE}/api/sources`;
+      const [healthData, ollamaData, documentData, sourceData] = await Promise.all([
         fetch(`${API_BASE}/api/health`).then((response) => readJson<HealthStatus>(response)),
         fetch(`${API_BASE}/api/providers/ollama`).then((response) => readJson<OllamaStatus>(response)),
         fetch(`${API_BASE}/api/documents`).then((response) =>
           readJson<{ documents: DocumentSummary[] }>(response),
         ),
+        fetch(sourceUrl).then((response) => readJson<{ sources: SourceSummary[] }>(response)),
       ]);
       setHealth(healthData);
       setOllama(ollamaData);
       setDocuments(documentData.documents);
+      setSources(sourceData.sources);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown status error.");
     } finally {
@@ -147,6 +171,48 @@ function App() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function importSource() {
+    setImportingSource(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const data = await fetch(`${API_BASE}/api/sources`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: sourceTitle, source_type: "paste", content: sourceContent }),
+      }).then((response) => readJson<{ source: SourceRecord }>(response));
+      setActiveSource(data.source);
+      setSourceTitle("Untitled Source");
+      setSourceContent("");
+      setNotice("Source imported.");
+      await refreshStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not import source.");
+    } finally {
+      setImportingSource(false);
+    }
+  }
+
+  async function openSource(sourceId: string) {
+    setLoading(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const data = await fetch(`${API_BASE}/api/sources/${sourceId}`).then((response) =>
+        readJson<{ source: SourceRecord }>(response),
+      );
+      setActiveSource(data.source);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not open source.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function searchSources() {
+    await refreshStatus(sourceSearch);
   }
 
   function jumpToHeading(headingId: string) {
@@ -275,8 +341,84 @@ function App() {
           )}
         </section>
 
-        <aside className="panel" aria-label="Runtime and export status">
+        <aside className="panel" aria-label="Sources, runtime, and export status">
           <div className="panelHeader">
+            <Search size={20} />
+            <h2>Sources</h2>
+          </div>
+          <div className="sourceImportForm">
+            <input
+              aria-label="Source title"
+              className="compactInput"
+              value={sourceTitle}
+              onChange={(event) => setSourceTitle(event.target.value)}
+              placeholder="Source title"
+            />
+            <textarea
+              aria-label="Source content"
+              className="sourceImportText"
+              value={sourceContent}
+              onChange={(event) => setSourceContent(event.target.value)}
+              placeholder="Paste source text or notes here."
+            />
+            <button
+              className="button fullWidth"
+              type="button"
+              disabled={importingSource || sourceContent.trim().length === 0}
+              onClick={() => void importSource()}
+            >
+              {importingSource ? "Importing…" : "Import Source"}
+            </button>
+          </div>
+
+          <div className="sourceSearchRow">
+            <input
+              aria-label="Search sources"
+              className="compactInput"
+              value={sourceSearch}
+              onChange={(event) => setSourceSearch(event.target.value)}
+              placeholder="Search sources"
+            />
+            <button className="button iconButton" type="button" onClick={() => void searchSources()}>
+              <Search size={16} />
+            </button>
+          </div>
+
+          {sources.length === 0 ? (
+            <p className="muted smallText">No sources yet. Import a source to support evidence-aware writing.</p>
+          ) : (
+            <ul className="sourceList">
+              {sources.map((source) => (
+                <li key={source.source_id}>
+                  <button
+                    className={
+                      activeSource?.source_id === source.source_id
+                        ? "sourceButton active"
+                        : "sourceButton"
+                    }
+                    type="button"
+                    onClick={() => void openSource(source.source_id)}
+                  >
+                    <span>{source.title}</span>
+                    <small>{source.source_type}</small>
+                    <p>{source.snippet}</p>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {activeSource && (
+            <section className="sourcePreview" aria-label="Selected source preview">
+              <h3>{activeSource.title}</h3>
+              <p className="muted smallText">{activeSource.source_type}</p>
+              <textarea readOnly value={activeSource.content} aria-label="Selected source text" />
+            </section>
+          )}
+
+          <div className="divider" />
+
+          <div className="panelHeader compact">
             <Server size={20} />
             <h2>Runtime</h2>
           </div>
