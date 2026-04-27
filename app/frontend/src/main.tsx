@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { FileText, RefreshCw, Save, Server, Sparkles } from "lucide-react";
+import { TiptapDocumentCanvas } from "./editor/TiptapDocumentCanvas";
+import type { HeadingAnchor } from "./editor/types";
 import "./styles.css";
 
 type OllamaModel = {
@@ -49,6 +51,8 @@ function App() {
   const [activeDocument, setActiveDocument] = useState<DocumentRecord | null>(null);
   const [draftTitle, setDraftTitle] = useState("");
   const [draftContent, setDraftContent] = useState("");
+  const [headings, setHeadings] = useState<HeadingAnchor[]>([]);
+  const [activeHeadingText, setActiveHeadingText] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +92,8 @@ function App() {
       setActiveDocument(data.document);
       setDraftTitle(data.document.title);
       setDraftContent(data.document.content);
+      setHeadings([]);
+      setActiveHeadingText(null);
       setNotice("Document created.");
       await refreshStatus();
     } catch (err) {
@@ -108,6 +114,8 @@ function App() {
       setActiveDocument(data.document);
       setDraftTitle(data.document.title);
       setDraftContent(data.document.content);
+      setHeadings([]);
+      setActiveHeadingText(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not open document.");
     } finally {
@@ -156,7 +164,7 @@ function App() {
       </section>
 
       <section className="workspaceGrid">
-        <aside className="panel" aria-label="Documents">
+        <aside className="panel" aria-label="Documents and active outline">
           <div className="panelHeader">
             <FileText size={20} />
             <h2>Documents</h2>
@@ -186,9 +194,26 @@ function App() {
               ))}
             </ul>
           )}
+
+          <div className="divider" />
+          <div className="panelHeader compact">
+            <h2>Active Outline</h2>
+          </div>
+          {headings.length === 0 ? (
+            <p className="muted smallText">Add H1, H2, or H3 headings in the editor to build the outline.</p>
+          ) : (
+            <ol className="outlineList">
+              {headings.map((heading) => (
+                <li key={heading.id} className={`outlineItem level${heading.level}`}>
+                  <span>{heading.text}</span>
+                  <small>H{heading.level}</small>
+                </li>
+              ))}
+            </ol>
+          )}
         </aside>
 
-        <section className="editorPanel" aria-label="Document editor scaffold">
+        <section className="editorPanel" aria-label="Document editor">
           {activeDocument ? (
             <>
               <div className="editorHeader">
@@ -203,15 +228,19 @@ function App() {
                   {saving ? "Saving…" : "Save"}
                 </button>
               </div>
-              <textarea
-                className="plainEditor"
-                aria-label="Document content scaffold"
-                value={draftContent}
-                onChange={(event) => setDraftContent(event.target.value)}
-                placeholder="Start writing here. This is the temporary pre-Tiptap editor scaffold."
+              <TiptapDocumentCanvas
+                documentId={activeDocument.document_id}
+                content={draftContent}
+                onChange={(html, _text, nextHeadings) => {
+                  setDraftContent(html);
+                  setHeadings(nextHeadings);
+                }}
+                onCursorContextChange={(_activeHeadingId, nextActiveHeadingText) => {
+                  setActiveHeadingText(nextActiveHeadingText);
+                }}
               />
               <p className="muted smallText">
-                Temporary scaffold editor only. The formal Tiptap/ProseMirror adapter comes next.
+                Tiptap/ProseMirror spike active. Current heading context: {activeHeadingText ?? "none"}.
               </p>
             </>
           ) : (
