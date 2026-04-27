@@ -1,0 +1,35 @@
+providers:
+  ollama_local:
+    enabled: true
+    type: local_ai
+    base_url: http://localhost:11434
+    privacy_mode: local_only
+    health_check: /api/tags
+    notes: Local Ollama is the guaranteed free/core provider.
+
+model_roles:
+  default_chat:
+    provider: ollama_local
+    model: null
+    selection_mode: user_selects_from_installed_models
+  source_summary:
+    provider: ollama_local
+    model: null
+    selection_mode: user_selects_from_installed_models
+  metadata_generation:
+    provider: ollama_local
+    model: null
+    selection_mode: user_selects_from_installed_models
+  embeddings:
+    provider: ollama_local
+    model: null
+    selection_mode: optional_if_supported
+
+cloud_providers:
+  enabled: false
+  require_explicit_user_configuration: true
+  require_private_context_confirmation: true
+
+secrets:
+  # Never put API keys in this file. Use ignored local config or environment variables later.
+  repo_safe: true
