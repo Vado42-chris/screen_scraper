@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { FileText, RefreshCw, Save, Search, Server, Sparkles } from "lucide-react";
+import { Activity, FileText, RefreshCw, Save, Search, Server, Sparkles } from "lucide-react";
 import { TiptapDocumentCanvas } from "./editor/TiptapDocumentCanvas";
 import type { HeadingAnchor } from "./editor/types";
 import "./styles.css";
@@ -48,6 +48,18 @@ type SourceRecord = SourceSummary & {
   content: string;
 };
 
+type LedgerPayload = Record<string, string | number | boolean | null | undefined>;
+
+type LedgerEvent = {
+  event_id: string;
+  event_type: string;
+  captured_at: string;
+  actor_type: string;
+  target_type: string;
+  target_id?: string | null;
+  payload: LedgerPayload;
+};
+
 const API_BASE = "http://127.0.0.1:8000";
 
 async function readJson<T>(response: Response): Promise<T> {
@@ -57,11 +69,40 @@ async function readJson<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+function eventTitle(event: LedgerEvent): string {
+  switch (event.event_type) {
+    case "document.created":
+      return `Document created: ${event.payload.title ?? "Untitled"}`;
+    case "document.saved":
+      return `Document saved: ${event.payload.title ?? "Untitled"}`;
+    case "source.imported":
+      return `Source imported: ${event.payload.title ?? "Untitled Source"}`;
+    case "source_reference.inserted":
+      return `Source reference inserted: ${event.payload.label ?? event.payload.source_title ?? "source"}`;
+    case "ollama.health_checked":
+      return `Ollama checked: ${event.payload.model_count ?? 0} model(s)`;
+    case "ollama.models_listed":
+      return `Ollama models listed: ${event.payload.model_count ?? 0}`;
+    case "provider.unavailable":
+      return `Provider unavailable: ${event.payload.message ?? "check settings"}`;
+    case "app.started":
+      return "App backend started";
+    default:
+      return event.event_type.replaceAll("_", " ").replaceAll(".", " · ");
+  }
+}
+
+function eventMeta(event: LedgerEvent): string {
+  const time = new Date(event.captured_at).toLocaleString();
+  return `${time} · ${event.actor_type} → ${event.target_type}`;
+}
+
 function App() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [ollama, setOllama] = useState<OllamaStatus | null>(null);
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
   const [sources, setSources] = useState<SourceSummary[]>([]);
+  const [events, setEvents] = useState<LedgerEvent[]>([]);
   const [activeDocument, setActiveDocument] = useState<DocumentRecord | null>(null);
   const [activeSource, setActiveSource] = useState<SourceRecord | null>(null);
   const [draftTitle, setDraftTitle] = useState("");
@@ -85,18 +126,22 @@ function App() {
       const sourceUrl = query.trim()
         ? `${API_BASE}/api/sources?q=${encodeURIComponent(query.trim())}`
         : `${API_BASE}/api/sources`;
-      const [healthData, ollamaData, documentData, sourceData] = await Promise.all([
+      const [healthData, ollamaData, documentData, sourceData, eventData] = await Promise.all([
         fetch(`${API_BASE}/api/health`).then((response) => readJson<HealthStatus>(response)),
         fetch(`${API_BASE}/api/providers/ollama`).then((response) => readJson<OllamaStatus>(response)),
         fetch(`${API_BASE}/api/documents`).then((response) =>
           readJson<{ documents: DocumentSummary[] }>(response),
         ),
         fetch(sourceUrl).then((response) => readJson<{ sources: SourceSummary[] }>(response)),
+        fetch(`${API_BASE}/api/events/recent?limit=12`).then((response) =>
+          readJson<{ events: LedgerEvent[] }>(response),
+        ),
       ]);
       setHealth(healthData);
       setOllama(ollamaData);
       setDocuments(documentData.documents);
       setSources(sourceData.sources);
+      setEvents(eventData.events);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown status error.");
     } finally {
@@ -224,6 +269,7 @@ function App() {
         }),
       }).then((response) => readJson<{ ok: boolean; event_id: string }>(response));
       setNotice(`${label} inserted and recorded.`);
+      await refreshStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Source reference was inserted, but not recorded.");
     }
@@ -363,7 +409,7 @@ function App() {
           )}
         </section>
 
-        <aside className="panel" aria-label="Sources, runtime, and export status">
+        <aside className="panel" aria-label="Sources, runtime, activity, and export status">
           <div className="panelHeader">
             <Search size={20} />
             <h2>Sources</h2>
@@ -454,6 +500,25 @@ function App() {
             </dl>
           ) : (
             <p className="muted">Waiting for backend status…</p>
+          )}
+
+          <div className="divider" />
+
+          <div className="panelHeader compact">
+            <Activity size={20} />
+            <h2>Recent Activity</h2>
+          </div>
+          {events.length === 0 ? (
+            <p className="muted smallText">No activity recorded yet.</p>
+          ) : (
+            <ol className="eventList">
+              {events.map((event) => (
+                <li key={event.event_id} className="eventItem">
+                  <strong>{eventTitle(event)}</strong>
+                  <span>{eventMeta(event)}</span>
+                </li>
+              ))}
+            </ol>
           )}
 
           <div className="divider" />
