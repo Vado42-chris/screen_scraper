@@ -21,13 +21,15 @@ body {
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
+select:focus-visible,
 .tiptapEditor:focus-visible {
   outline: 3px solid rgba(199, 192, 255, 0.65);
   outline-offset: 2px;
@@ -321,14 +323,16 @@ dd {
   font-size: 0.95rem;
 }
 
-.sourceImportForm {
+.sourceImportForm,
+.aiAssistPanel {
   display: grid;
   gap: 10px;
   margin-bottom: 14px;
 }
 
 .sourceImportText,
-.sourcePreview textarea {
+.sourcePreview textarea,
+.aiSuggestionPreview textarea {
   width: 100%;
   min-height: 120px;
   padding: 12px;
@@ -339,6 +343,23 @@ dd {
   color: #f3f1ec;
   font-size: 0.92rem;
   line-height: 1.55;
+}
+
+.aiSuggestionPreview {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(167, 243, 208, 0.2);
+  border-radius: 18px;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.aiSuggestionPreview strong {
+  color: #d1fae5;
+}
+
+.aiSuggestionPreview textarea {
+  min-height: 180px;
 }
 
 .sourceSearchRow {
