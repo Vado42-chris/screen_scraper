@@ -12,7 +12,7 @@ from app.services.document_service import DocumentRecord
 from app.services.event_ledger import EventLedgerService
 
 
-SUPPORTED_FORMATS = {"md", "json"}
+SUPPORTED_FORMATS = {"md", "html", "txt", "json"}
 DEFAULT_PRODUCT_ID = "screen_scraper"
 DEFAULT_ADAPTER_VERSION = "v1"
 
@@ -114,6 +114,72 @@ def html_to_markdown(content: str) -> str:
     return markdown.strip() + "\n"
 
 
+def build_standalone_html_document(package: DocumentEgressPackage) -> str:
+    title = html.escape(package.artifact_title)
+    body = package.html_body.strip() or "<p></p>"
+    return f"""<!doctype html>
+<html lang=\"en\">
+<head>
+  <meta charset=\"utf-8\" />
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+  <meta name=\"generator\" content=\"screen_scraper {html.escape(package.adapter_version)}\" />
+  <title>{title}</title>
+  <style>
+    :root {{
+      color-scheme: light;
+      font-family: Georgia, 'Times New Roman', serif;
+      color: #1f1f1f;
+      background: #f7f4ed;
+    }}
+    body {{
+      margin: 0;
+      padding: 48px 24px;
+      background: #f7f4ed;
+    }}
+    main {{
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 48px;
+      background: #fffdf8;
+      border: 1px solid #e6dfd1;
+      box-shadow: 0 18px 60px rgba(31, 31, 31, 0.08);
+    }}
+    h1, h2, h3, h4, h5, h6 {{
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.15;
+    }}
+    p, li, blockquote {{
+      font-size: 1.08rem;
+      line-height: 1.75;
+    }}
+    blockquote {{
+      margin: 1.5rem 0;
+      padding-left: 1rem;
+      border-left: 4px solid #c9bfae;
+      color: #4f463c;
+    }}
+    .export-meta {{
+      margin-top: 3rem;
+      padding-top: 1rem;
+      border-top: 1px solid #e6dfd1;
+      color: #7a7064;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 0.85rem;
+    }}
+  </style>
+</head>
+<body>
+  <main>
+    {body}
+    <section class=\"export-meta\" aria-label=\"Export metadata\">
+      <p>Export profile: {html.escape(package.profile)} · Document type: {html.escape(package.document_type)}</p>
+    </section>
+  </main>
+</body>
+</html>
+"""
+
+
 def safe_slug(value: str) -> str:
     slug = re.sub(r"[^a-zA-Z0-9]+", "-", value.strip().lower()).strip("-")
     return slug or "untitled-document"
@@ -163,6 +229,40 @@ class MarkdownExportAdapter:
         )
 
 
+class HtmlExportAdapter:
+    format = "html"
+
+    def export(self, package: DocumentEgressPackage) -> ExportArtifact:
+        filename = f"{safe_slug(package.artifact_title)}.html"
+        content = build_standalone_html_document(package)
+        return ExportArtifact(
+            artifact_id=str(uuid.uuid4()),
+            export_id=package.export_id,
+            filename=filename,
+            format=self.format,
+            content=content,
+            content_type="text/html; charset=utf-8",
+            content_chars=len(content),
+        )
+
+
+class PlainTextExportAdapter:
+    format = "txt"
+
+    def export(self, package: DocumentEgressPackage) -> ExportArtifact:
+        filename = f"{safe_slug(package.artifact_title)}.txt"
+        content = package.plain_text_body.strip() + "\n"
+        return ExportArtifact(
+            artifact_id=str(uuid.uuid4()),
+            export_id=package.export_id,
+            filename=filename,
+            format=self.format,
+            content=content,
+            content_type="text/plain; charset=utf-8",
+            content_chars=len(content),
+        )
+
+
 class JsonExportAdapter:
     format = "json"
 
@@ -186,6 +286,8 @@ class ExportService:
         self.builder = ExportPackageBuilder()
         self.adapters: dict[str, ExportAdapter] = {
             "md": MarkdownExportAdapter(),
+            "html": HtmlExportAdapter(),
+            "txt": PlainTextExportAdapter(),
             "json": JsonExportAdapter(),
         }
 
