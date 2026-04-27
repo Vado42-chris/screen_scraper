@@ -38,6 +38,13 @@ class DocumentSnapshotCreateRequest(BaseModel):
     note: str = Field(default="Manual checkpoint", max_length=500)
 
 
+class SnapshotRestoreRequest(BaseModel):
+    document_id: str = Field(min_length=1)
+    pre_restore_title: str = Field(default="Untitled Document", max_length=240)
+    pre_restore_content: str = ""
+    confirmation: str = Field(min_length=1, max_length=40)
+
+
 class SourceCreateRequest(BaseModel):
     title: str = Field(default="Untitled Source", max_length=240)
     source_type: str = Field(default="paste", max_length=80)
@@ -305,6 +312,78 @@ def preview_snapshot_restore(
         },
     )
     return {"snapshot": snapshots.to_dict(snapshot), "event_id": event.event_id}
+
+
+@app.post("/api/snapshots/{snapshot_id}/restore")
+def restore_snapshot(
+    snapshot_id: str,
+    request: SnapshotRestoreRequest,
+    documents: DocumentService = Depends(get_documents),
+    snapshots: SnapshotService = Depends(get_snapshots),
+    ledger: EventLedgerService = Depends(get_ledger),
+) -> dict[str, object]:
+    if request.confirmation != "RESTORE":
+        raise HTTPException(status_code=400, detail="Restore confirmation must be RESTORE.")
+
+    snapshot = snapshots.get(snapshot_id)
+    if snapshot is None:
+        raise HTTPException(status_code=404, detail="Snapshot not found.")
+
+    document = documents.get(request.document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found.")
+
+    if snapshot.document_id != request.document_id:
+        raise HTTPException(status_code=400, detail="Snapshot does not belong to this document.")
+
+    pre_restore_snapshot = snapshots.create(
+        document_id=request.document_id,
+        title=request.pre_restore_title,
+        content=request.pre_restore_content,
+        note=f"Pre-restore checkpoint before restoring {snapshot.note}",
+    )
+    ledger.append(
+        event_type="snapshot.pre_restore_checkpoint_created",
+        actor_type="system",
+        target_type="document",
+        target_id=request.document_id,
+        payload={
+            "snapshot_id": pre_restore_snapshot.snapshot_id,
+            "document_id": request.document_id,
+            "title": pre_restore_snapshot.title,
+            "note": pre_restore_snapshot.note,
+            "content_chars": len(pre_restore_snapshot.content),
+        },
+    )
+
+    restored_document = documents.update(
+        document_id=request.document_id,
+        title=snapshot.title,
+        content=snapshot.content,
+    )
+    if restored_document is None:
+        raise HTTPException(status_code=500, detail="Document restore failed.")
+
+    event = ledger.append(
+        event_type="snapshot.restored",
+        actor_type="user",
+        target_type="document",
+        target_id=request.document_id,
+        payload={
+            "snapshot_id": snapshot.snapshot_id,
+            "pre_restore_snapshot_id": pre_restore_snapshot.snapshot_id,
+            "document_id": request.document_id,
+            "title": snapshot.title,
+            "note": snapshot.note,
+            "restored_content_chars": len(snapshot.content),
+        },
+    )
+
+    return {
+        "document": documents.to_dict(restored_document),
+        "pre_restore_snapshot": snapshots.to_summary(pre_restore_snapshot),
+        "event_id": event.event_id,
+    }
 
 
 @app.get("/api/sources")
