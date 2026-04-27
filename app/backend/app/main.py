@@ -8,6 +8,7 @@ from app.config import Settings, get_settings
 from app.services.document_service import DocumentService
 from app.services.event_ledger import EventLedgerService
 from app.services.ollama_provider import OllamaProviderService, OllamaStatus
+from app.services.snapshot_service import SnapshotService
 from app.services.source_library_service import SourceLibraryService
 
 app = FastAPI(title="screen_scraper backend", version="0.1.0")
@@ -29,6 +30,12 @@ class DocumentCreateRequest(BaseModel):
 class DocumentUpdateRequest(BaseModel):
     title: str = Field(default="Untitled Document", max_length=240)
     content: str = ""
+
+
+class DocumentSnapshotCreateRequest(BaseModel):
+    title: str = Field(default="Untitled Document", max_length=240)
+    content: str = ""
+    note: str = Field(default="Manual checkpoint", max_length=500)
 
 
 class SourceCreateRequest(BaseModel):
@@ -76,6 +83,10 @@ def get_documents(settings: Settings = Depends(get_settings)) -> DocumentService
 
 def get_sources(settings: Settings = Depends(get_settings)) -> SourceLibraryService:
     return SourceLibraryService(settings.sqlite_path)
+
+
+def get_snapshots(settings: Settings = Depends(get_settings)) -> SnapshotService:
+    return SnapshotService(settings.sqlite_path)
 
 
 def build_continue_prompt(request: AIContinueRequest, document_title: str) -> str:
@@ -213,6 +224,62 @@ def update_document(
         payload={"title": document.title},
     )
     return {"document": documents.to_dict(document)}
+
+
+@app.get("/api/documents/{document_id}/snapshots")
+def list_document_snapshots(
+    document_id: str,
+    documents: DocumentService = Depends(get_documents),
+    snapshots: SnapshotService = Depends(get_snapshots),
+) -> dict[str, object]:
+    document = documents.get(document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found.")
+    return {"snapshots": snapshots.list_for_document(document_id)}
+
+
+@app.post("/api/documents/{document_id}/snapshots")
+def create_document_snapshot(
+    document_id: str,
+    request: DocumentSnapshotCreateRequest,
+    documents: DocumentService = Depends(get_documents),
+    snapshots: SnapshotService = Depends(get_snapshots),
+    ledger: EventLedgerService = Depends(get_ledger),
+) -> dict[str, object]:
+    document = documents.get(document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found.")
+
+    snapshot = snapshots.create(
+        document_id=document_id,
+        title=request.title,
+        content=request.content,
+        note=request.note,
+    )
+    ledger.append(
+        event_type="snapshot.created",
+        actor_type="user",
+        target_type="document",
+        target_id=document_id,
+        payload={
+            "snapshot_id": snapshot.snapshot_id,
+            "title": snapshot.title,
+            "note": snapshot.note,
+            "content_chars": len(snapshot.content),
+        },
+    )
+    return {"snapshot": snapshots.to_summary(snapshot)}
+
+
+@app.get("/api/snapshots/{snapshot_id}")
+def get_snapshot(
+    snapshot_id: str,
+    snapshots: SnapshotService = Depends(get_snapshots),
+) -> dict[str, object]:
+    snapshot = snapshots.get(snapshot_id)
+    if snapshot is None:
+        raise HTTPException(status_code=404, detail="Snapshot not found.")
+    return {"snapshot": snapshots.to_dict(snapshot)}
 
 
 @app.get("/api/sources")
