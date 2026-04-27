@@ -15,11 +15,13 @@ type TiptapDocumentCanvasProps = {
   documentId: string;
   content: string;
   selectedSource?: ActiveSourceRef | null;
+  pendingSuggestion?: string;
   onChange: (html: string, text: string, markdown: string, headings: HeadingAnchor[]) => void;
   onCursorContextChange?: (activeHeadingId: string | null, activeHeadingText: string | null) => void;
   onMarkdownExport?: (markdown: string) => void;
   onSourceReferenceInserted?: (sourceId: string, label: string) => void;
   onSectionPromptInserted?: (promptId: string, label: string, status: string) => void;
+  onSuggestionInserted?: () => void;
 };
 
 function slugifyHeading(text: string): string {
@@ -155,15 +157,28 @@ function emitChange(
   onChange(html, text, htmlToMarkdown(html), extractHeadingAnchors(root));
 }
 
+function suggestionToParagraphs(suggestion: string): Array<{ type: "paragraph"; content: Array<{ type: "text"; text: string }> }> {
+  return suggestion
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .map((paragraph) => ({
+      type: "paragraph" as const,
+      content: [{ type: "text" as const, text: paragraph }],
+    }));
+}
+
 export function TiptapDocumentCanvas({
   documentId,
   content,
   selectedSource,
+  pendingSuggestion,
   onChange,
   onCursorContextChange,
   onMarkdownExport,
   onSourceReferenceInserted,
   onSectionPromptInserted,
+  onSuggestionInserted,
 }: TiptapDocumentCanvasProps) {
   const extensions = useMemo(
     () => [
@@ -238,6 +253,25 @@ export function TiptapDocumentCanvas({
     onSectionPromptInserted?.(promptId, label, status);
   };
 
+  const insertPendingSuggestion = () => {
+    if (!pendingSuggestion?.trim()) return;
+    editor
+      .chain()
+      .focus()
+      .insertContent({
+        type: "blockquote",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", marks: [{ type: "bold" }], text: "AI suggestion, review before keeping:" }],
+          },
+          ...suggestionToParagraphs(pendingSuggestion),
+        ],
+      })
+      .run();
+    onSuggestionInserted?.();
+  };
+
   return (
     <div className="editorSurface" data-document-id={documentId}>
       <div className="editorToolbar" aria-label="Document formatting">
@@ -265,6 +299,11 @@ export function TiptapDocumentCanvas({
         <button type="button" onClick={insertSectionPrompt}>
           [[Prompt]]
         </button>
+        {pendingSuggestion?.trim() && (
+          <button type="button" onClick={insertPendingSuggestion}>
+            Insert AI Suggestion
+          </button>
+        )}
         <button type="button" onClick={() => onMarkdownExport?.(htmlToMarkdown(editor.getHTML()))}>
           Export MD
         </button>
