@@ -316,6 +316,7 @@ function App() {
               <TiptapDocumentCanvas
                 documentId={activeDocument.document_id}
                 content={draftContent}
+                selectedSource={activeSource}
                 onChange={(html, _text, markdown, nextHeadings) => {
                   setDraftContent(html);
                   setMarkdownPreview(markdown);
@@ -327,6 +328,9 @@ function App() {
                 onMarkdownExport={(markdown) => {
                   setMarkdownPreview(markdown);
                   setNotice("Markdown preview refreshed.");
+                }}
+                onSourceReferenceInserted={(_sourceId, label) => {
+                  setNotice(`${label} inserted into document.`);
                 }}
               />
               <p className="muted smallText">
@@ -412,6 +416,7 @@ function App() {
             <section className="sourcePreview" aria-label="Selected source preview">
               <h3>{activeSource.title}</h3>
               <p className="muted smallText">{activeSource.source_type}</p>
+              <p className="muted smallText">Use the editor toolbar button @{activeSource.title} to insert this source.</p>
               <textarea readOnly value={activeSource.content} aria-label="Selected source text" />
             </section>
           )}
