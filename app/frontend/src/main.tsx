@@ -57,6 +57,10 @@ type SnapshotSummary = {
   content_chars: number;
 };
 
+type SnapshotRecord = Omit<SnapshotSummary, "content_chars"> & {
+  content: string;
+};
+
 type LedgerPayload = Record<string, string | number | boolean | null | undefined>;
 
 type LedgerEvent = {
@@ -133,6 +137,7 @@ function App() {
   const [events, setEvents] = useState<LedgerEvent[]>([]);
   const [activeDocument, setActiveDocument] = useState<DocumentRecord | null>(null);
   const [activeSource, setActiveSource] = useState<SourceRecord | null>(null);
+  const [activeSnapshot, setActiveSnapshot] = useState<SnapshotRecord | null>(null);
   const [draftTitle, setDraftTitle] = useState("");
   const [draftContent, setDraftContent] = useState("");
   const [sourceSearch, setSourceSearch] = useState("");
@@ -148,6 +153,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [snapshotting, setSnapshotting] = useState(false);
+  const [loadingSnapshot, setLoadingSnapshot] = useState(false);
   const [importingSource, setImportingSource] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -210,6 +216,7 @@ function App() {
       setDraftTitle(data.document.title);
       setDraftContent(data.document.content);
       setSnapshots([]);
+      setActiveSnapshot(null);
       setHeadings([]);
       setActiveHeadingText(null);
       setMarkdownPreview("");
@@ -235,6 +242,7 @@ function App() {
       setActiveDocument(data.document);
       setDraftTitle(data.document.title);
       setDraftContent(data.document.content);
+      setActiveSnapshot(null);
       setHeadings([]);
       setActiveHeadingText(null);
       setMarkdownPreview("");
@@ -286,12 +294,30 @@ function App() {
       }).then((response) => readJson<{ snapshot: SnapshotSummary }>(response));
       setNotice("Checkpoint created.");
       setSnapshotNote("Manual checkpoint");
+      setActiveSnapshot(null);
       await fetchSnapshots(activeDocument.document_id);
       await refreshStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create checkpoint.");
     } finally {
       setSnapshotting(false);
+    }
+  }
+
+  async function previewCheckpoint(snapshotId: string) {
+    setLoadingSnapshot(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const data = await fetch(`${API_BASE}/api/snapshots/${snapshotId}`).then((response) =>
+        readJson<{ snapshot: SnapshotRecord }>(response),
+      );
+      setActiveSnapshot(data.snapshot);
+      setNotice("Checkpoint preview loaded. Document was not changed.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load checkpoint preview.");
+    } finally {
+      setLoadingSnapshot(false);
     }
   }
 
@@ -640,13 +666,33 @@ function App() {
             ) : (
               <ol className="snapshotList">
                 {snapshots.map((snapshot) => (
-                  <li key={snapshot.snapshot_id} className="snapshotItem">
-                    <strong>{snapshot.note}</strong>
-                    <span>{new Date(snapshot.created_at).toLocaleString()}</span>
-                    <small>{snapshot.content_chars} chars captured</small>
+                  <li key={snapshot.snapshot_id}>
+                    <button
+                      className={
+                        activeSnapshot?.snapshot_id === snapshot.snapshot_id
+                          ? "snapshotButton active"
+                          : "snapshotButton"
+                      }
+                      type="button"
+                      disabled={loadingSnapshot}
+                      onClick={() => void previewCheckpoint(snapshot.snapshot_id)}
+                    >
+                      <strong>{snapshot.note}</strong>
+                      <span>{new Date(snapshot.created_at).toLocaleString()}</span>
+                      <small>{snapshot.content_chars} chars captured</small>
+                    </button>
                   </li>
                 ))}
               </ol>
+            )}
+
+            {activeSnapshot && (
+              <section className="snapshotPreview" aria-label="Checkpoint preview">
+                <strong>{activeSnapshot.note}</strong>
+                <span>{new Date(activeSnapshot.created_at).toLocaleString()}</span>
+                <p className="muted smallText">Preview only. The current document has not been changed.</p>
+                <textarea readOnly value={activeSnapshot.content} aria-label="Checkpoint content preview" />
+              </section>
             )}
           </div>
 
