@@ -240,6 +240,11 @@ dd {
   color: #f3f1ec;
 }
 
+.dangerButton {
+  background: #fecaca !important;
+  color: #3f1111 !important;
+}
+
 .fullWidth {
   width: 100%;
   justify-content: center;
@@ -374,9 +379,34 @@ dd {
   background: rgba(0, 0, 0, 0.12);
 }
 
-.checkpointPanel .button {
+.checkpointPanel .button:not(.dangerButton):not(.secondary) {
   background: #fef3c7;
   color: #1f1b12;
+}
+
+.restoreConfirmPanel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(248, 113, 113, 0.24);
+  border-radius: 16px;
+  background: rgba(127, 29, 29, 0.18);
+}
+
+.restoreConfirmPanel strong {
+  color: #fecaca;
+}
+
+.restoreConfirmPanel p {
+  color: #f7d4d4;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.restoreActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
 }
 
 .sourceImportText,
@@ -653,7 +683,8 @@ dd {
     align-items: stretch;
   }
 
-  dl {
+  dl,
+  .restoreActions {
     grid-template-columns: 1fr;
   }
 
