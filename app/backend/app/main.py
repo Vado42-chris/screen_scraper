@@ -282,6 +282,31 @@ def get_snapshot(
     return {"snapshot": snapshots.to_dict(snapshot)}
 
 
+@app.post("/api/snapshots/{snapshot_id}/restore-preview")
+def preview_snapshot_restore(
+    snapshot_id: str,
+    snapshots: SnapshotService = Depends(get_snapshots),
+    ledger: EventLedgerService = Depends(get_ledger),
+) -> dict[str, object]:
+    snapshot = snapshots.get(snapshot_id)
+    if snapshot is None:
+        raise HTTPException(status_code=404, detail="Snapshot not found.")
+
+    event = ledger.append(
+        event_type="snapshot.restore_previewed",
+        actor_type="user",
+        target_type="document",
+        target_id=snapshot.document_id,
+        payload={
+            "snapshot_id": snapshot.snapshot_id,
+            "title": snapshot.title,
+            "note": snapshot.note,
+            "content_chars": len(snapshot.content),
+        },
+    )
+    return {"snapshot": snapshots.to_dict(snapshot), "event_id": event.event_id}
+
+
 @app.get("/api/sources")
 def list_sources(
     q: str = "",
