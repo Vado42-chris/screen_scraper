@@ -53,6 +53,7 @@ function App() {
   const [draftContent, setDraftContent] = useState("");
   const [headings, setHeadings] = useState<HeadingAnchor[]>([]);
   const [activeHeadingText, setActiveHeadingText] = useState<string | null>(null);
+  const [markdownPreview, setMarkdownPreview] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +95,7 @@ function App() {
       setDraftContent(data.document.content);
       setHeadings([]);
       setActiveHeadingText(null);
+      setMarkdownPreview("");
       setNotice("Document created.");
       await refreshStatus();
     } catch (err) {
@@ -116,6 +118,7 @@ function App() {
       setDraftContent(data.document.content);
       setHeadings([]);
       setActiveHeadingText(null);
+      setMarkdownPreview("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not open document.");
     } finally {
@@ -144,6 +147,16 @@ function App() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function jumpToHeading(headingId: string) {
+    const target = document.getElementById(`heading-${headingId}`);
+    if (!target) {
+      setError("That heading is not available yet. Try saving or editing the heading again.");
+      return;
+    }
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    target.focus?.();
   }
 
   useEffect(() => {
@@ -204,9 +217,15 @@ function App() {
           ) : (
             <ol className="outlineList">
               {headings.map((heading) => (
-                <li key={heading.id} className={`outlineItem level${heading.level}`}>
-                  <span>{heading.text}</span>
-                  <small>H{heading.level}</small>
+                <li key={heading.id}>
+                  <button
+                    className={`outlineButton level${heading.level}`}
+                    type="button"
+                    onClick={() => jumpToHeading(heading.id)}
+                  >
+                    <span>{heading.text}</span>
+                    <small>H{heading.level}</small>
+                  </button>
                 </li>
               ))}
             </ol>
@@ -231,12 +250,17 @@ function App() {
               <TiptapDocumentCanvas
                 documentId={activeDocument.document_id}
                 content={draftContent}
-                onChange={(html, _text, nextHeadings) => {
+                onChange={(html, _text, markdown, nextHeadings) => {
                   setDraftContent(html);
+                  setMarkdownPreview(markdown);
                   setHeadings(nextHeadings);
                 }}
                 onCursorContextChange={(_activeHeadingId, nextActiveHeadingText) => {
                   setActiveHeadingText(nextActiveHeadingText);
+                }}
+                onMarkdownExport={(markdown) => {
+                  setMarkdownPreview(markdown);
+                  setNotice("Markdown preview refreshed.");
                 }}
               />
               <p className="muted smallText">
@@ -251,7 +275,7 @@ function App() {
           )}
         </section>
 
-        <aside className="panel" aria-label="Runtime status">
+        <aside className="panel" aria-label="Runtime and export status">
           <div className="panelHeader">
             <Server size={20} />
             <h2>Runtime</h2>
@@ -292,6 +316,22 @@ function App() {
             </>
           ) : (
             <p className="muted">Checking Ollama through the backend gateway…</p>
+          )}
+
+          <div className="divider" />
+
+          <div className="panelHeader compact">
+            <h2>Markdown Preview</h2>
+          </div>
+          {markdownPreview ? (
+            <textarea
+              className="markdownPreview"
+              aria-label="Markdown export preview"
+              readOnly
+              value={markdownPreview}
+            />
+          ) : (
+            <p className="muted smallText">Use Export MD in the editor toolbar to preview Markdown here.</p>
           )}
         </aside>
       </section>
