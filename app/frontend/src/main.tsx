@@ -79,6 +79,8 @@ function eventTitle(event: LedgerEvent): string {
       return `Source imported: ${event.payload.title ?? "Untitled Source"}`;
     case "source_reference.inserted":
       return `Source reference inserted: ${event.payload.label ?? event.payload.source_title ?? "source"}`;
+    case "section_prompt.created":
+      return `Section prompt created: ${event.payload.label ?? "section prompt"}`;
     case "ollama.health_checked":
       return `Ollama checked: ${event.payload.model_count ?? 0} model(s)`;
     case "ollama.models_listed":
@@ -275,6 +277,27 @@ function App() {
     }
   }
 
+  async function recordSectionPromptInserted(promptId: string, label: string, status: string) {
+    if (!activeDocument) return;
+    try {
+      await fetch(`${API_BASE}/api/section-prompts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          document_id: activeDocument.document_id,
+          prompt_id: promptId,
+          label,
+          status,
+          active_heading: activeHeadingText,
+        }),
+      }).then((response) => readJson<{ ok: boolean; event_id: string }>(response));
+      setNotice(`${label} inserted and recorded.`);
+      await refreshStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Section prompt was inserted, but not recorded.");
+    }
+  }
+
   async function searchSources() {
     await refreshStatus(sourceSearch);
   }
@@ -395,6 +418,9 @@ function App() {
                 }}
                 onSourceReferenceInserted={(sourceId, label) => {
                   void recordSourceReferenceInserted(sourceId, label);
+                }}
+                onSectionPromptInserted={(promptId, label, status) => {
+                  void recordSectionPromptInserted(promptId, label, status);
                 }}
               />
               <p className="muted smallText">
