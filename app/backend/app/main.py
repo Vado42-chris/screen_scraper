@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from app.config import Settings, get_settings
 from app.services.document_service import DocumentService
 from app.services.event_ledger import EventLedgerService
+from app.services.export_service import ExportRequest, ExportService
 from app.services.ollama_provider import OllamaProviderService, OllamaStatus
 from app.services.snapshot_service import SnapshotService
 from app.services.source_library_service import SourceLibraryService
@@ -30,6 +31,17 @@ class DocumentCreateRequest(BaseModel):
 class DocumentUpdateRequest(BaseModel):
     title: str = Field(default="Untitled Document", max_length=240)
     content: str = ""
+
+
+class DocumentExportRequest(BaseModel):
+    format: str = Field(default="md", min_length=1, max_length=20)
+    profile: str = Field(default="Draft Review", max_length=80)
+    document_type: str = Field(default="article", max_length=80)
+    include_sources: bool = True
+    include_lexicon: bool = False
+    include_prompts: bool = True
+    include_ai_provenance: bool = False
+    include_media_metadata: bool = True
 
 
 class DocumentSnapshotCreateRequest(BaseModel):
@@ -94,6 +106,10 @@ def get_sources(settings: Settings = Depends(get_settings)) -> SourceLibraryServ
 
 def get_snapshots(settings: Settings = Depends(get_settings)) -> SnapshotService:
     return SnapshotService(settings.sqlite_path)
+
+
+def get_exports(ledger: EventLedgerService = Depends(get_ledger)) -> ExportService:
+    return ExportService(ledger)
 
 
 def build_continue_prompt(request: AIContinueRequest, document_title: str) -> str:
@@ -231,6 +247,46 @@ def update_document(
         payload={"title": document.title},
     )
     return {"document": documents.to_dict(document)}
+
+
+@app.post("/api/documents/{document_id}/exports")
+def export_document(
+    document_id: str,
+    request: DocumentExportRequest,
+    documents: DocumentService = Depends(get_documents),
+    exports: ExportService = Depends(get_exports),
+) -> dict[str, object]:
+    document = documents.get(document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found.")
+    try:
+        result = exports.export_document(
+            document=document,
+            request=ExportRequest(
+                format=request.format,
+                profile=request.profile,
+                document_type=request.document_type,
+                include_sources=request.include_sources,
+                include_lexicon=request.include_lexicon,
+                include_prompts=request.include_prompts,
+                include_ai_provenance=request.include_ai_provenance,
+                include_media_metadata=request.include_media_metadata,
+            ),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {
+        "export_id": result.export_id,
+        "artifact": {
+            "artifact_id": result.artifact.artifact_id,
+            "filename": result.artifact.filename,
+            "format": result.artifact.format,
+            "content_type": result.artifact.content_type,
+            "content": result.artifact.content,
+            "content_chars": result.artifact.content_chars,
+        },
+        "manifest": result.manifest,
+    }
 
 
 @app.get("/api/documents/{document_id}/snapshots")
