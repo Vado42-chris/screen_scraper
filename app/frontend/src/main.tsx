@@ -93,6 +93,8 @@ function eventTitle(event: LedgerEvent): string {
       return `AI suggestion ready: ${event.payload.suggestion_chars ?? 0} chars`;
     case "ai.failed":
       return `AI failed: ${event.payload.message ?? "provider error"}`;
+    case "ai_suggestion.inserted":
+      return `AI suggestion inserted: ${event.payload.suggestion_chars ?? 0} chars`;
     case "ollama.health_checked":
       return `Ollama checked: ${event.payload.model_count ?? 0} model(s)`;
     case "ollama.models_listed":
@@ -355,6 +357,27 @@ function App() {
     }
   }
 
+  async function recordAISuggestionInserted() {
+    if (!activeDocument || !aiSuggestion) return;
+    try {
+      await fetch(`${API_BASE}/api/ai/suggestion-inserted`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          document_id: activeDocument.document_id,
+          model: aiSuggestion.model,
+          suggestion_chars: aiSuggestion.suggestion.length,
+          active_heading: activeHeadingText,
+        }),
+      }).then((response) => readJson<{ ok: boolean; event_id: string }>(response));
+      setNotice("AI suggestion inserted and recorded.");
+      setAiSuggestion(null);
+      await refreshStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "AI suggestion was inserted, but not recorded.");
+    }
+  }
+
   async function searchSources() {
     await refreshStatus(sourceSearch);
   }
@@ -461,6 +484,7 @@ function App() {
                 documentId={activeDocument.document_id}
                 content={draftContent}
                 selectedSource={activeSource}
+                pendingSuggestion={aiSuggestion?.suggestion ?? ""}
                 onChange={(html, _text, markdown, nextHeadings) => {
                   setDraftContent(html);
                   setMarkdownPreview(markdown);
@@ -478,6 +502,9 @@ function App() {
                 }}
                 onSectionPromptInserted={(promptId, label, status) => {
                   void recordSectionPromptInserted(promptId, label, status);
+                }}
+                onSuggestionInserted={() => {
+                  void recordAISuggestionInserted();
                 }}
               />
               <p className="muted smallText">
@@ -528,7 +555,7 @@ function App() {
             {aiSuggestion && (
               <section className="aiSuggestionPreview" aria-label="AI suggestion preview">
                 <strong>Suggestion from {aiSuggestion.model}</strong>
-                <p className="muted smallText">Review only. Nothing is applied to the document automatically.</p>
+                <p className="muted smallText">Review only. Use the editor toolbar button to insert this text.</p>
                 <textarea readOnly value={aiSuggestion.suggestion} aria-label="AI suggestion text" />
               </section>
             )}
