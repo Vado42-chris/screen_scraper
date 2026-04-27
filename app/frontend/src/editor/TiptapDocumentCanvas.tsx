@@ -2,6 +2,8 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useEffect, useMemo } from "react";
+import { SectionPromptBlock } from "./extensions/SectionPromptBlock";
+import { SourceReferenceChip } from "./extensions/SourceReferenceChip";
 import type { HeadingAnchor } from "./types";
 
 type TiptapDocumentCanvasProps = {
@@ -88,6 +90,14 @@ function htmlToMarkdown(html: string): string {
       return "";
     }
 
+    if (node.dataset.nodeType === "source-reference-chip") {
+      return node.dataset.label ?? "@source:stub";
+    }
+
+    if (node.dataset.nodeType === "section-prompt-block") {
+      return `\n\n${node.dataset.label ?? "[[prompt:section]]"}\n\n`;
+    }
+
     const childText = Array.from(node.childNodes).map(convertNode).join("");
 
     switch (node.tagName.toLowerCase()) {
@@ -151,6 +161,8 @@ export function TiptapDocumentCanvas({
           levels: [1, 2, 3],
         },
       }),
+      SourceReferenceChip,
+      SectionPromptBlock,
       Placeholder.configure({
         placeholder: "Start writing here. Use headings to build the outline.",
       }),
@@ -212,13 +224,28 @@ export function TiptapDocumentCanvas({
         </button>
         <button
           type="button"
-          onClick={() => editor.chain().focus().insertContent("<span data-source-ref=\"stub\">@source:stub</span>").run()}
+          onClick={() =>
+            editor
+              .chain()
+              .focus()
+              .insertContent({ type: "sourceReferenceChip", attrs: { sourceId: "stub", label: "@source:stub" } })
+              .run()
+          }
         >
           @Source
         </button>
         <button
           type="button"
-          onClick={() => editor.chain().focus().insertContent("<p data-block-type=\"section-prompt\">[[prompt:section]]</p>").run()}
+          onClick={() =>
+            editor
+              .chain()
+              .focus()
+              .insertContent({
+                type: "sectionPromptBlock",
+                attrs: { promptId: "stub", status: "draft", label: "[[prompt:section]]" },
+              })
+              .run()
+          }
         >
           [[Prompt]]
         </button>
