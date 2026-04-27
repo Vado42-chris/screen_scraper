@@ -211,6 +211,24 @@ function App() {
     }
   }
 
+  async function recordSourceReferenceInserted(sourceId: string, label: string) {
+    if (!activeDocument) return;
+    try {
+      await fetch(`${API_BASE}/api/source-references`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          document_id: activeDocument.document_id,
+          source_id: sourceId,
+          label,
+        }),
+      }).then((response) => readJson<{ ok: boolean; event_id: string }>(response));
+      setNotice(`${label} inserted and recorded.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Source reference was inserted, but not recorded.");
+    }
+  }
+
   async function searchSources() {
     await refreshStatus(sourceSearch);
   }
@@ -329,8 +347,8 @@ function App() {
                   setMarkdownPreview(markdown);
                   setNotice("Markdown preview refreshed.");
                 }}
-                onSourceReferenceInserted={(_sourceId, label) => {
-                  setNotice(`${label} inserted into document.`);
+                onSourceReferenceInserted={(sourceId, label) => {
+                  void recordSourceReferenceInserted(sourceId, label);
                 }}
               />
               <p className="muted smallText">
