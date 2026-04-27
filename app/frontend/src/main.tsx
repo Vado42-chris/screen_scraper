@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { Activity, FileText, RefreshCw, Save, Search, Server, Sparkles } from "lucide-react";
+import { Activity, Bookmark, FileText, RefreshCw, Save, Search, Server, Sparkles } from "lucide-react";
 import { TiptapDocumentCanvas } from "./editor/TiptapDocumentCanvas";
 import type { HeadingAnchor } from "./editor/types";
 import "./styles.css";
@@ -48,6 +48,15 @@ type SourceRecord = SourceSummary & {
   content: string;
 };
 
+type SnapshotSummary = {
+  snapshot_id: string;
+  document_id: string;
+  title: string;
+  note: string;
+  created_at: string;
+  content_chars: number;
+};
+
 type LedgerPayload = Record<string, string | number | boolean | null | undefined>;
 
 type LedgerEvent = {
@@ -81,6 +90,8 @@ function eventTitle(event: LedgerEvent): string {
       return `Document created: ${event.payload.title ?? "Untitled"}`;
     case "document.saved":
       return `Document saved: ${event.payload.title ?? "Untitled"}`;
+    case "snapshot.created":
+      return `Checkpoint created: ${event.payload.note ?? event.payload.title ?? "snapshot"}`;
     case "source.imported":
       return `Source imported: ${event.payload.title ?? "Untitled Source"}`;
     case "source_reference.inserted":
@@ -118,6 +129,7 @@ function App() {
   const [ollama, setOllama] = useState<OllamaStatus | null>(null);
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
   const [sources, setSources] = useState<SourceSummary[]>([]);
+  const [snapshots, setSnapshots] = useState<SnapshotSummary[]>([]);
   const [events, setEvents] = useState<LedgerEvent[]>([]);
   const [activeDocument, setActiveDocument] = useState<DocumentRecord | null>(null);
   const [activeSource, setActiveSource] = useState<SourceRecord | null>(null);
@@ -126,6 +138,7 @@ function App() {
   const [sourceSearch, setSourceSearch] = useState("");
   const [sourceTitle, setSourceTitle] = useState("Untitled Source");
   const [sourceContent, setSourceContent] = useState("");
+  const [snapshotNote, setSnapshotNote] = useState("Manual checkpoint");
   const [aiInstruction, setAiInstruction] = useState("Continue from the current section.");
   const [aiModel, setAiModel] = useState("");
   const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
@@ -134,10 +147,18 @@ function App() {
   const [markdownPreview, setMarkdownPreview] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [snapshotting, setSnapshotting] = useState(false);
   const [importingSource, setImportingSource] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  async function fetchSnapshots(documentId: string) {
+    const data = await fetch(`${API_BASE}/api/documents/${documentId}/snapshots`).then((response) =>
+      readJson<{ snapshots: SnapshotSummary[] }>(response),
+    );
+    setSnapshots(data.snapshots);
+  }
 
   async function refreshStatus(query = sourceSearch) {
     setLoading(true);
@@ -162,6 +183,9 @@ function App() {
       setDocuments(documentData.documents);
       setSources(sourceData.sources);
       setEvents(eventData.events);
+      if (activeDocument) {
+        await fetchSnapshots(activeDocument.document_id);
+      }
       if (!aiModel && ollamaData.models.length > 0) {
         setAiModel(ollamaData.models[0].name);
       }
@@ -185,12 +209,14 @@ function App() {
       setActiveDocument(data.document);
       setDraftTitle(data.document.title);
       setDraftContent(data.document.content);
+      setSnapshots([]);
       setHeadings([]);
       setActiveHeadingText(null);
       setMarkdownPreview("");
       setAiSuggestion(null);
       setNotice("Document created.");
       await refreshStatus();
+      await fetchSnapshots(data.document.document_id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create document.");
     } finally {
@@ -213,6 +239,7 @@ function App() {
       setActiveHeadingText(null);
       setMarkdownPreview("");
       setAiSuggestion(null);
+      await fetchSnapshots(data.document.document_id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not open document.");
     } finally {
@@ -240,6 +267,31 @@ function App() {
       setError(err instanceof Error ? err.message : "Could not save document.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function createCheckpoint() {
+    if (!activeDocument) {
+      setError("Open a document before creating a checkpoint.");
+      return;
+    }
+    setSnapshotting(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await fetch(`${API_BASE}/api/documents/${activeDocument.document_id}/snapshots`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: draftTitle, content: draftContent, note: snapshotNote }),
+      }).then((response) => readJson<{ snapshot: SnapshotSummary }>(response));
+      setNotice("Checkpoint created.");
+      setSnapshotNote("Manual checkpoint");
+      await fetchSnapshots(activeDocument.document_id);
+      await refreshStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create checkpoint.");
+    } finally {
+      setSnapshotting(false);
     }
   }
 
@@ -519,7 +571,7 @@ function App() {
           )}
         </section>
 
-        <aside className="panel" aria-label="Sources, runtime, activity, and export status">
+        <aside className="panel" aria-label="Sources, checkpoints, runtime, activity, and export status">
           <div className="panelHeader">
             <Sparkles size={20} />
             <h2>AI Suggestion</h2>
@@ -558,6 +610,43 @@ function App() {
                 <p className="muted smallText">Review only. Use the editor toolbar button to insert this text.</p>
                 <textarea readOnly value={aiSuggestion.suggestion} aria-label="AI suggestion text" />
               </section>
+            )}
+          </div>
+
+          <div className="divider" />
+
+          <div className="panelHeader compact">
+            <Bookmark size={20} />
+            <h2>Checkpoints</h2>
+          </div>
+          <div className="checkpointPanel">
+            <input
+              aria-label="Checkpoint note"
+              className="compactInput"
+              value={snapshotNote}
+              onChange={(event) => setSnapshotNote(event.target.value)}
+              placeholder="Checkpoint note"
+            />
+            <button
+              className="button fullWidth"
+              type="button"
+              disabled={snapshotting || !activeDocument}
+              onClick={() => void createCheckpoint()}
+            >
+              {snapshotting ? "Creating…" : "Create Checkpoint"}
+            </button>
+            {snapshots.length === 0 ? (
+              <p className="muted smallText">No checkpoints yet for this document.</p>
+            ) : (
+              <ol className="snapshotList">
+                {snapshots.map((snapshot) => (
+                  <li key={snapshot.snapshot_id} className="snapshotItem">
+                    <strong>{snapshot.note}</strong>
+                    <span>{new Date(snapshot.created_at).toLocaleString()}</span>
+                    <small>{snapshot.content_chars} chars captured</small>
+                  </li>
+                ))}
+              </ol>
             )}
           </div>
 
