@@ -43,6 +43,14 @@ class SourceReferenceInsertedRequest(BaseModel):
     label: str = Field(min_length=1, max_length=240)
 
 
+class SectionPromptCreatedRequest(BaseModel):
+    document_id: str = Field(min_length=1)
+    prompt_id: str = Field(min_length=1, max_length=120)
+    label: str = Field(default="Section Prompt", min_length=1, max_length=240)
+    status: str = Field(default="draft", min_length=1, max_length=80)
+    active_heading: str | None = Field(default=None, max_length=240)
+
+
 def get_ledger(settings: Settings = Depends(get_settings)) -> EventLedgerService:
     return EventLedgerService(settings.sqlite_path)
 
@@ -238,6 +246,31 @@ def record_source_reference_inserted(
             "source_id": request.source_id,
             "source_title": source.title,
             "label": request.label,
+        },
+    )
+    return {"ok": True, "event_id": event.event_id}
+
+
+@app.post("/api/section-prompts")
+def record_section_prompt_created(
+    request: SectionPromptCreatedRequest,
+    documents: DocumentService = Depends(get_documents),
+    ledger: EventLedgerService = Depends(get_ledger),
+) -> dict[str, object]:
+    document = documents.get(request.document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found.")
+
+    event = ledger.append(
+        event_type="section_prompt.created",
+        actor_type="user",
+        target_type="document",
+        target_id=request.document_id,
+        payload={
+            "prompt_id": request.prompt_id,
+            "label": request.label,
+            "status": request.status,
+            "active_heading": request.active_heading,
         },
     )
     return {"ok": True, "event_id": event.event_id}
