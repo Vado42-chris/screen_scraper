@@ -37,6 +37,12 @@ class SourceCreateRequest(BaseModel):
     content: str = Field(default="", min_length=1)
 
 
+class SourceReferenceInsertedRequest(BaseModel):
+    document_id: str = Field(min_length=1)
+    source_id: str = Field(min_length=1)
+    label: str = Field(min_length=1, max_length=240)
+
+
 def get_ledger(settings: Settings = Depends(get_settings)) -> EventLedgerService:
     return EventLedgerService(settings.sqlite_path)
 
@@ -207,3 +213,31 @@ def get_source(
     if source is None:
         raise HTTPException(status_code=404, detail="Source not found.")
     return {"source": sources.to_dict(source)}
+
+
+@app.post("/api/source-references")
+def record_source_reference_inserted(
+    request: SourceReferenceInsertedRequest,
+    documents: DocumentService = Depends(get_documents),
+    sources: SourceLibraryService = Depends(get_sources),
+    ledger: EventLedgerService = Depends(get_ledger),
+) -> dict[str, object]:
+    document = documents.get(request.document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found.")
+    source = sources.get(request.source_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Source not found.")
+
+    event = ledger.append(
+        event_type="source_reference.inserted",
+        actor_type="user",
+        target_type="document",
+        target_id=request.document_id,
+        payload={
+            "source_id": request.source_id,
+            "source_title": source.title,
+            "label": request.label,
+        },
+    )
+    return {"ok": True, "event_id": event.event_id}
