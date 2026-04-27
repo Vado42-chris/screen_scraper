@@ -1,27 +1,119 @@
 engine: egress
-version: 1
-status: screen_scraper_initial
-purpose: route approved outputs and staged actions to UI, documents, vault, exports, metadata, snapshots, and future repo/provider actions
+version: 2
+status: framework_aligned_screen_scraper_adapter
+purpose: route approved screen_scraper writer/document outputs through the xi-io framework egress standard
+
+framework:
+  standard: xi-io.net/docs/framework/egress-engine-standard-v1.md
+  adapter_template: xi-io.net/docs/framework/templates/product-egress-adapter-template-v1.md
+  product_adapter_contract: docs/screen-scraper-egress-adapter-contract-v1.md
+  local_export_plan: docs/export-egress-contract-v1.md
+
+product:
+  product_id: screen_scraper
+  display_name: screen_scraper
+  canonical_package_type: DocumentEgressPackage
+  adapter_version: v1
+
+supported_egress_classes:
+  mvp:
+    - document_export
+    - snapshot_create
+    - rollback_restore
+  related_runtime:
+    - source_library_update
+    - provider_call
+  future:
+    - document_patch
+    - document_generate
+    - metadata_update
+    - rights_update
+    - media_asset_update
+    - data_export
+    - external_tool_call
+
+supported_document_types:
+  mvp:
+    - article
+    - chapter
+    - guide
+    - report
+    - research_packet
+    - source_package
+    - archive_package
+    - metadata_report
+    - lexicon_report
+  future:
+    - book
+    - manual
+    - brief
+    - technical_spec
+    - story_bible
+    - character_sheet
+    - location_sheet
+    - lore_entry
+
+supported_export_formats:
+  mvp:
+    - md
+    - html
+    - txt
+    - json
+    - zip
+  required_later:
+    - docx
+    - pdf
+    - epub
+  optional_later:
+    - odt
+    - rtf
+    - tex
+    - fountain
+    - csv
+    - yaml
+
+supported_export_profiles:
+  mvp:
+    - Draft Review
+    - Clean Artifact
+    - Web Preview
+    - Source Package
+    - Archive Package
+    - Metadata Report
+    - Lexicon Report
+  future:
+    - Submission Artifact
+    - Ebook Draft
+    - Operations Package
 
 outputs:
   ui_updates:
     enabled: true
+  document_export:
+    enabled: true
+    requires_user_approval_when_warnings_exist: true
   document_generation:
-    enabled: true
+    enabled: false
+    notes: future egress action after AI patch/diff safety exists
   document_patch_application:
-    enabled: true
+    enabled: false
     requires_user_approval: true
+    notes: future egress action after diff preview exists
   source_library_updates:
     enabled: true
   metadata_updates:
-    enabled: true
+    enabled: false
+    requires_user_approval: true
+  rights_updates:
+    enabled: false
     requires_user_approval: true
   media_asset_updates:
-    enabled: true
+    enabled: false
   snapshot_creation:
     enabled: true
-  export_generation:
+  rollback_restore:
     enabled: true
+    requires_user_approval: true
   repo_commit_push:
     enabled: false
     notes: future xi-io.net management-plane integration
@@ -30,6 +122,18 @@ outputs:
   external_tool_calls:
     enabled: false
     requires_bridge: true
+
+safe_output_targets:
+  - local_download
+  - local_project_exports_directory
+  - product_runtime_storage
+  - local_preview_only
+
+forbidden_output_targets:
+  - silent_cloud_upload
+  - silent_public_publish
+  - unconfirmed_repo_write
+  - unmanaged_absolute_path
 
 modes:
   novice:
@@ -49,12 +153,83 @@ modes:
     allow_advanced_provider_controls: true
 
 approval_gates:
+  document_export_with_unresolved_warnings: required
   ai_document_change: required
   metadata_generated: required
   rights_license_change: required
   rollback_restore: required
   cloud_provider_use: required
-  export_with_unresolved_items: warning
+  archive_package: required
+
+blocked_conditions:
+  - missing_document
+  - missing_export_format
+  - unsupported_document_type
+  - unresolved_rights_status
+  - unsafe_output_target
+  - forbidden_event_payload_field
+  - missing_required_manifest
+
+manifest:
+  required_for:
+    - zip
+  manifest_version: 1
+  include_product_id: true
+  include_project_id: true
+  include_source_version: true
+  include_export_profile: true
+  include_format: true
+  include_adapter_version: true
+  include_document_type: true
+  include_counts: true
+  include_rights_summary: true
+  include_license_summary: true
+  include_warnings: true
+  include_events: true
+
+event_mapping:
+  requested: export.requested
+  completed: export.completed
+  failed: export.failed
+  bundle_created: export.bundle_created
+  downloaded: export.downloaded
+  egress_requested: egress.requested
+  egress_completed: egress.completed
+
+allowed_event_payload_fields:
+  - egress_id
+  - export_id
+  - product_id
+  - project_id
+  - document_id
+  - artifact_id
+  - action_type
+  - target_type
+  - target_id
+  - document_type
+  - format
+  - profile
+  - adapter_version
+  - artifact_count
+  - content_chars
+  - source_reference_count
+  - lexicon_term_count
+  - media_item_count
+  - ok
+  - message
+  - warning_count
+  - blocked_reason
+
+forbidden_event_payload_fields:
+  - raw document content
+  - raw source content
+  - raw AI suggestion text
+  - secret values
+  - API keys
+  - tokens
+  - absolute local filesystem paths
+  - private user directory names
+  - raw generated media bytes
 
 safety:
   never_commit:
@@ -70,6 +245,8 @@ safety:
   do_not_silently_overwrite_user_text: true
   do_not_silently_change_license_metadata: true
   do_not_send_private_content_to_cloud_without_policy: true
+  do_not_store_raw_private_content_in_event_payloads: true
+  do_not_export_unresolved_warnings_without_surface: true
 
 freshness:
   update_after_successful_output: true
