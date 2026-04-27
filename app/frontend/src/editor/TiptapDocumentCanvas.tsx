@@ -19,6 +19,7 @@ type TiptapDocumentCanvasProps = {
   onCursorContextChange?: (activeHeadingId: string | null, activeHeadingText: string | null) => void;
   onMarkdownExport?: (markdown: string) => void;
   onSourceReferenceInserted?: (sourceId: string, label: string) => void;
+  onSectionPromptInserted?: (promptId: string, label: string, status: string) => void;
 };
 
 function slugifyHeading(text: string): string {
@@ -162,6 +163,7 @@ export function TiptapDocumentCanvas({
   onCursorContextChange,
   onMarkdownExport,
   onSourceReferenceInserted,
+  onSectionPromptInserted,
 }: TiptapDocumentCanvasProps) {
   const extensions = useMemo(
     () => [
@@ -221,6 +223,21 @@ export function TiptapDocumentCanvas({
     onSourceReferenceInserted?.(sourceId, label);
   };
 
+  const insertSectionPrompt = () => {
+    const promptId = `prompt-${Date.now()}`;
+    const status = "draft";
+    const label = "[[prompt:section]]";
+    editor
+      .chain()
+      .focus()
+      .insertContent({
+        type: "sectionPromptBlock",
+        attrs: { promptId, status, label },
+      })
+      .run();
+    onSectionPromptInserted?.(promptId, label, status);
+  };
+
   return (
     <div className="editorSurface" data-document-id={documentId}>
       <div className="editorToolbar" aria-label="Document formatting">
@@ -245,19 +262,7 @@ export function TiptapDocumentCanvas({
         <button type="button" onClick={insertSelectedSource}>
           {selectedSource ? `@${selectedSource.title}` : "@Source"}
         </button>
-        <button
-          type="button"
-          onClick={() =>
-            editor
-              .chain()
-              .focus()
-              .insertContent({
-                type: "sectionPromptBlock",
-                attrs: { promptId: "stub", status: "draft", label: "[[prompt:section]]" },
-              })
-              .run()
-          }
-        >
+        <button type="button" onClick={insertSectionPrompt}>
           [[Prompt]]
         </button>
         <button type="button" onClick={() => onMarkdownExport?.(htmlToMarkdown(editor.getHTML()))}>
