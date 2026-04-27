@@ -96,6 +96,8 @@ function eventTitle(event: LedgerEvent): string {
       return `Document saved: ${event.payload.title ?? "Untitled"}`;
     case "snapshot.created":
       return `Checkpoint created: ${event.payload.note ?? event.payload.title ?? "snapshot"}`;
+    case "snapshot.restore_previewed":
+      return `Checkpoint previewed: ${event.payload.note ?? event.payload.title ?? "snapshot"}`;
     case "source.imported":
       return `Source imported: ${event.payload.title ?? "Untitled Source"}`;
     case "source_reference.inserted":
@@ -309,11 +311,12 @@ function App() {
     setError(null);
     setNotice(null);
     try {
-      const data = await fetch(`${API_BASE}/api/snapshots/${snapshotId}`).then((response) =>
-        readJson<{ snapshot: SnapshotRecord }>(response),
-      );
+      const data = await fetch(`${API_BASE}/api/snapshots/${snapshotId}/restore-preview`, {
+        method: "POST",
+      }).then((response) => readJson<{ snapshot: SnapshotRecord; event_id: string }>(response));
       setActiveSnapshot(data.snapshot);
-      setNotice("Checkpoint preview loaded. Document was not changed.");
+      setNotice("Checkpoint preview loaded and recorded. Document was not changed.");
+      await refreshStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load checkpoint preview.");
     } finally {
