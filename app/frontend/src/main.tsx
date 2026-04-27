@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { RefreshCw, Server, Sparkles } from "lucide-react";
+import { FileText, RefreshCw, Save, Server, Sparkles } from "lucide-react";
 import "./styles.css";
 
 type OllamaModel = {
@@ -22,30 +22,119 @@ type HealthStatus = {
   environment: string;
 };
 
+type DocumentSummary = {
+  document_id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type DocumentRecord = DocumentSummary & {
+  content: string;
+};
+
 const API_BASE = "http://127.0.0.1:8000";
+
+async function readJson<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status}`);
+  }
+  return response.json() as Promise<T>;
+}
 
 function App() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [ollama, setOllama] = useState<OllamaStatus | null>(null);
+  const [documents, setDocuments] = useState<DocumentSummary[]>([]);
+  const [activeDocument, setActiveDocument] = useState<DocumentRecord | null>(null);
+  const [draftTitle, setDraftTitle] = useState("");
+  const [draftContent, setDraftContent] = useState("");
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   async function refreshStatus() {
     setLoading(true);
     setError(null);
     try {
-      const [healthResponse, ollamaResponse] = await Promise.all([
-        fetch(`${API_BASE}/api/health`),
-        fetch(`${API_BASE}/api/providers/ollama`),
+      const [healthData, ollamaData, documentData] = await Promise.all([
+        fetch(`${API_BASE}/api/health`).then((response) => readJson<HealthStatus>(response)),
+        fetch(`${API_BASE}/api/providers/ollama`).then((response) => readJson<OllamaStatus>(response)),
+        fetch(`${API_BASE}/api/documents`).then((response) =>
+          readJson<{ documents: DocumentSummary[] }>(response),
+        ),
       ]);
-      if (!healthResponse.ok) throw new Error("Backend health check failed.");
-      if (!ollamaResponse.ok) throw new Error("Ollama provider check failed.");
-      setHealth(await healthResponse.json());
-      setOllama(await ollamaResponse.json());
+      setHealth(healthData);
+      setOllama(ollamaData);
+      setDocuments(documentData.documents);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown status error.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function createDocument() {
+    setLoading(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const data = await fetch(`${API_BASE}/api/documents`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Untitled Document", content: "" }),
+      }).then((response) => readJson<{ document: DocumentRecord }>(response));
+      setActiveDocument(data.document);
+      setDraftTitle(data.document.title);
+      setDraftContent(data.document.content);
+      setNotice("Document created.");
+      await refreshStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create document.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function openDocument(documentId: string) {
+    setLoading(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const data = await fetch(`${API_BASE}/api/documents/${documentId}`).then((response) =>
+        readJson<{ document: DocumentRecord }>(response),
+      );
+      setActiveDocument(data.document);
+      setDraftTitle(data.document.title);
+      setDraftContent(data.document.content);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not open document.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function saveDocument() {
+    if (!activeDocument) return;
+    setSaving(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const data = await fetch(`${API_BASE}/api/documents/${activeDocument.document_id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: draftTitle, content: draftContent }),
+      }).then((response) => readJson<{ document: DocumentRecord }>(response));
+      setActiveDocument(data.document);
+      setDraftTitle(data.document.title);
+      setDraftContent(data.document.content);
+      setNotice("Document saved.");
+      await refreshStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save document.");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -54,40 +143,106 @@ function App() {
   }, []);
 
   return (
-    <main className="shell">
-      <section className="hero">
-        <div className="eyebrow"><Sparkles size={18} /> xi-io compliant writing runtime</div>
-        <h1>screen_scraper</h1>
-        <p>
-          A local-first cooperative writing workspace is taking shape. This first slice proves the
-          backend, frontend, Ollama provider boundary, and event-ledger path before the editor lands.
-        </p>
+    <main className="shell appShell">
+      <section className="topBar" aria-label="Workspace status">
+        <div>
+          <div className="eyebrow"><Sparkles size={18} /> xi-io compliant writing runtime</div>
+          <h1>screen_scraper</h1>
+        </div>
+        <button className="button secondary" type="button" onClick={() => void refreshStatus()} disabled={loading}>
+          <RefreshCw size={18} />
+          {loading ? "Checking…" : "Refresh"}
+        </button>
       </section>
 
-      <section className="grid">
-        <article className="card">
-          <div className="cardHeader">
+      <section className="workspaceGrid">
+        <aside className="panel" aria-label="Documents">
+          <div className="panelHeader">
+            <FileText size={20} />
+            <h2>Documents</h2>
+          </div>
+          <button className="button fullWidth" type="button" onClick={() => void createDocument()} disabled={loading}>
+            New Document
+          </button>
+          {documents.length === 0 ? (
+            <p className="muted smallText">No documents yet. Create one to start the writing loop.</p>
+          ) : (
+            <ul className="documentList">
+              {documents.map((document) => (
+                <li key={document.document_id}>
+                  <button
+                    className={
+                      activeDocument?.document_id === document.document_id
+                        ? "documentButton active"
+                        : "documentButton"
+                    }
+                    type="button"
+                    onClick={() => void openDocument(document.document_id)}
+                  >
+                    <span>{document.title}</span>
+                    <small>{new Date(document.updated_at).toLocaleString()}</small>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </aside>
+
+        <section className="editorPanel" aria-label="Document editor scaffold">
+          {activeDocument ? (
+            <>
+              <div className="editorHeader">
+                <input
+                  className="titleInput"
+                  aria-label="Document title"
+                  value={draftTitle}
+                  onChange={(event) => setDraftTitle(event.target.value)}
+                />
+                <button className="button" type="button" onClick={() => void saveDocument()} disabled={saving}>
+                  <Save size={18} />
+                  {saving ? "Saving…" : "Save"}
+                </button>
+              </div>
+              <textarea
+                className="plainEditor"
+                aria-label="Document content scaffold"
+                value={draftContent}
+                onChange={(event) => setDraftContent(event.target.value)}
+                placeholder="Start writing here. This is the temporary pre-Tiptap editor scaffold."
+              />
+              <p className="muted smallText">
+                Temporary scaffold editor only. The formal Tiptap/ProseMirror adapter comes next.
+              </p>
+            </>
+          ) : (
+            <div className="emptyState">
+              <h2>Start with a document</h2>
+              <p>Create or open a document. Manual writing works first, AI and source-aware drafting layer in after the editor adapter.</p>
+            </div>
+          )}
+        </section>
+
+        <aside className="panel" aria-label="Runtime status">
+          <div className="panelHeader">
             <Server size={20} />
-            <h2>Backend health</h2>
+            <h2>Runtime</h2>
           </div>
           {health ? (
             <dl>
-              <dt>App</dt>
-              <dd>{health.app_name}</dd>
+              <dt>Backend</dt>
+              <dd>{health.ok === "true" ? "Online" : "Unknown"}</dd>
               <dt>Environment</dt>
               <dd>{health.environment}</dd>
-              <dt>Status</dt>
-              <dd>{health.ok === "true" ? "Online" : "Unknown"}</dd>
             </dl>
           ) : (
             <p className="muted">Waiting for backend status…</p>
           )}
-        </article>
 
-        <article className="card">
-          <div className="cardHeader">
+          <div className="divider" />
+
+          <div className="panelHeader compact">
             <Sparkles size={20} />
-            <h2>Ollama local AI</h2>
+            <h2>Ollama</h2>
           </div>
           {ollama ? (
             <>
@@ -109,15 +264,15 @@ function App() {
           ) : (
             <p className="muted">Checking Ollama through the backend gateway…</p>
           )}
-        </article>
+        </aside>
       </section>
 
-      {error && <p className="error">{error}</p>}
-
-      <button className="button" type="button" onClick={() => void refreshStatus()} disabled={loading}>
-        <RefreshCw size={18} />
-        {loading ? "Checking…" : "Refresh status"}
-      </button>
+      {(error || notice) && (
+        <section className="statusToast" aria-live="polite">
+          {error && <p className="error">{error}</p>}
+          {notice && <p className="good">{notice}</p>}
+        </section>
+      )}
     </main>
   );
 }
