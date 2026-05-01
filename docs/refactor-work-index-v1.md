@@ -16,6 +16,46 @@ peer review after each pass
 record commits and caveats
 prefer framework-aligned product adapters over one-off product logic
 protect the writer-facing editor from backend/system complexity
+repo-safe modularity is a project invariant, not optional polish
+```
+
+## Repo-safe modularity invariant
+
+Repo-safe modular work is the default implementation posture for this project.
+
+This means future changes should prefer small, reviewable, framework-aligned modules over monolithic file growth. The goal is not abstraction for its own sake. The goal is:
+
+```text
+environment portability
+lower brittleness
+clearer ownership boundaries
+safer review and rollback
+better white-label reuse
+consistent UX behavior
+better compliance with xi-io framework contracts
+higher-end user experience through predictable component behavior
+```
+
+Repo-safe modularity requires:
+
+```text
+components have explicit responsibilities
+services own backend orchestration
+adapters map product-specific data to framework standards
+shared helpers live in shared modules
+feature panels are extracted only at stable seams
+state is moved only when the ownership boundary is clear
+large shell files must not keep accumulating feature logic
+```
+
+Repo-safe modularity does not mean:
+
+```text
+splitting files into tiny fragments without purpose
+moving state away from where it is understood
+adding abstractions before boundaries are proven
+rewriting working flows for cosmetic architecture
+exposing backend machinery in the default writing UI
 ```
 
 ## Active architectural rules
@@ -164,6 +204,8 @@ Did it avoid adding unrelated features?
 Did it preserve writer-facing simplicity?
 Did it preserve summary-only ledger behavior?
 Did it avoid exposing backend machinery in default UI?
+Did it preserve repo-safe modular boundaries?
+Did it improve or preserve white-label reuse?
 Did it update this index?
 Were commits recorded?
 Were caveats recorded?
