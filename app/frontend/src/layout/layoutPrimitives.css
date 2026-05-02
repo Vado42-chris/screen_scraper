@@ -1,0 +1,187 @@
+.xiPageShell {
+  width: min(1480px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 28px 0;
+}
+
+.xiPageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+.xiPageHeaderText {
+  display: grid;
+  gap: 10px;
+}
+
+.xiPageEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #c7c0ff;
+  font-size: 0.95rem;
+}
+
+.xiPageActions,
+.xiSectionActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.xiSection {
+  display: grid;
+  gap: 16px;
+}
+
+.xiSectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.xiSectionHeader p {
+  margin-top: 6px;
+  color: #aaa49a;
+  font-size: 0.92rem;
+}
+
+.xiGrid {
+  display: grid;
+}
+
+.xiGrid-one {
+  grid-template-columns: 1fr;
+}
+
+.xiGrid-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.xiGrid-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.xiGrid-auto {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.xiStack {
+  display: flex;
+  flex-direction: column;
+}
+
+.xiGap-sm {
+  gap: 8px;
+}
+
+.xiGap-md {
+  gap: 16px;
+}
+
+.xiGap-lg {
+  gap: 24px;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  padding: 5px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #f3f1ec;
+  font-size: 0.82rem;
+}
+
+.statusBadgeDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.statusBadge-success,
+.statusBadge-confirmed,
+.statusBadge-safe-to-run {
+  color: #a7f3d0;
+}
+
+.statusBadge-failed,
+.statusBadge-blocked,
+.statusBadge-missing {
+  color: #fecaca;
+}
+
+.statusBadge-risky,
+.statusBadge-changed,
+.statusBadge-drift {
+  color: #fde68a;
+}
+
+.statusBadge-unknown {
+  color: #cbd5e1;
+}
+
+.actionResultPanel {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.actionResultPanel p {
+  color: #d8d4cb;
+  font-size: 0.9rem;
+}
+
+.actionResultPanelActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.actionResultPanel-success {
+  border-color: rgba(167, 243, 208, 0.22);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.actionResultPanel-failed,
+.actionResultPanel-blocked {
+  border-color: rgba(254, 202, 202, 0.22);
+  background: rgba(127, 29, 29, 0.14);
+}
+
+.actionResultPanel-needs-confirmation,
+.actionResultPanel-not-configured,
+.actionResultPanel-unknown {
+  border-color: rgba(253, 230, 138, 0.22);
+  background: rgba(120, 53, 15, 0.12);
+}
+
+@media (max-width: 780px) {
+  .xiPageShell {
+    width: min(100vw - 24px, 720px);
+    padding: 24px 0;
+  }
+
+  .xiPageHeader,
+  .xiSectionHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .xiGrid-two,
+  .xiGrid-three {
+    grid-template-columns: 1fr;
+  }
+}
